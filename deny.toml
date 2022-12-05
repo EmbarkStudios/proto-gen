@@ -1,0 +1,139 @@
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-apple-darwin" },
+    { triple = "x86_64-apple-darwin" },
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "aarch64-linux-android" },
+    { triple = "x86_64-unknown-linux-musl" },
+]
+all-features = true
+
+[advisories]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+ignore = [
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny/issues/241 is fixed
+deny = [
+    # crates we use but we wrap them and allow only specific workspace crates to use them
+    { name = "app_dirs2", wrappers = ["ark-bootstrap-common", "discord-sdk"] },
+    { name = "dirs", wrappers = ["ark-bootstrap-common", "shellexpand"] },
+    { name = "dirs-sys", wrappers = ["dirs", "shellexpand"] },
+
+    # denied crates
+    { name = "openssl" },           # we use rustls instead
+    { name = "openssl-sys" },       # we use rustls instead
+    { name = "RustyXml" },          # we don't want to use any XML and some of these are 4 year old dependencies
+    { name = "serde-xml-rs" },      # we don't want to use any XML and some of these are 4 year old dependencies
+    { name = "color-backtrace" },   # color-backtrace is nice but brings in too many dependencies and that are often outdated, so not worth it for us.
+    { name = "typetag" },           # disallow these crates that rely on static initialization order which we've had issues with
+    { name = "inventory" },         # disallow these crates that rely on static initialization order which we've had issues with
+    { name = "ctor" },              # disallow these crates that rely on static initialization order which we've had issues with
+    { name = "bzip2" },             # disallow C dependency, we just Rust native versions instead
+    { name = "smart-default", wrappers = ["minidump-common"] },      # smart-default should not be used
+    { name = "actix-web" },         # repeatedly unsound, too many dependencies, and not needed for our use cases
+    { name = "bzip2-sys" },         # disallow C dependency, we just Rust native versions instead
+    { name = "nfd" },               # unmaintined, we use `rfd` instead
+    { name = "nfd2" },              # we use `rfd` instead
+    { name = "msgbox" },            # we use `rfd` instead
+    { name = "backtrace-sys" },     # disallow C dependency, use gimli Rust crate instead
+    { name = "keyring" },           # too many and too old dependencies
+    { name = "secret-service" },    # too many and too old dependencies
+    { name = "wasmtime-cache" },    # we do our own manual caching
+    { name = "cap-directories" },   # we use app_dirs2 and our own layer on top of it
+    { name = "directories" },       # we use app_dirs2
+    { name = "directories-next" },  # we use app_dirs2
+    { name = "chrono" },            # we use `time`
+    { name = "breakpad-sys" },      # we use `minidumper`
+    { name = "breakpad-handler" },  # we use `crash-handler`
+    { name = "dirs-next" },         # we use dirs instead
+    { name = "dirs-sys-next" },     # we use dirs-sys instead
+    { name = "log-once" },          # we use ark-log instead
+    { name = "cervo" },              # we use the sub crates directly as don't need the CLI commands and extra dependencies
+
+    # library choices we've made
+    { name = "async-std" },         # we use tokio
+    { name = "cap-async-std" },     # we use tokio
+    { name = "cgmath" },            # we use glam as math library
+    { name = "mimallocator" },      # unmaintained, we use the maintained mimalloc instead
+    { name = "nalgebra" },          # we use glam as math library
+    { name = "nalgebra-glm" },      # we use glam as math library
+    { name = "ncollide3d"},         # we use PhysX, not nphysics/nalgebra
+    { name = "nphysics"},           # we use PhysX, not nphysics/nalgebra
+    { name = "pretty_env_logger" }, # we use our own logger
+    { name = "cmake" },             # we use cc crate instead and convert projects to use it
+    { name = "shaderc" },           # we use Rust GPU instead of GLSL
+    { name = "shaderc-sys" },       # we use Rust GPU instead of GLSL
+    { name = "sqlx" },              # we use tokio-postgres instead
+    { name = "reqwest", wrappers = [ "google-cloud-metadata", "google-cloud-auth" ] }, # we use our own ark-http-client
+    { name = "vk-mem" },            # we use the pure Rust gpu-allocator
+    { name = "structopt" },         # we use the clap v3 which has absorbed the structopt functionality
+    { name = "criterion" },         # we use tiny-bench
+
+    # library choices we've made, but can't deny crates of just yet
+    #{ name = "path-abs" },          # we use cap-std
+    { name = "ansi_term" },         # unmaintained, we use nu-ansi-term instead
+
+    # deprecated/abandoned
+    { name = "term" },              # term is not fully maintained, and termcolor/ansi_term is replacing it
+    { name = "quickersort" },       # explicitly deprecated
+    { name = "build-helper" },      # abandoned, and doesn't add much value
+    { name = "app_dirs" },          # abandoned, use app_dirs2 instead
+    { name = "colored" },           # not actively maintained? slow to merge update fixes in and has lots of old dependencies
+    { name = "floating-duration"},  # not needed with Rust 1.38, and very few users and commits
+    { name = "mopa"},               # abandoned, have not been updated for 4 years
+    { name = "size_format" },       # nice but small, unmaintained crate with very few users
+    { name = "gcc" },               # old deprecated, use cc instead
+    { name = "owning_ref" },        # unsound and unmaintained
+]
+
+skip = []
+
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+required-git-spec = "rev"
+allow-registry = [
+    # crates.io needs to be added back since it only defaults if we don't
+    # modify this key
+    "https://github.com/rust-lang/crates.io-index",
+]
+allow-git = [
+    # explicit repositories we trust and use for forks, should generally be empty.
+    # avoid adding new forks here to your own or others privates account, fork crates under EmbarkStudios org inteads.
+    # see https://ark.embark.dev/internals/workflow/patching-crates.html
+]
+
+[sources.allow-org]
+github = [
+    "EmbarkStudios",
+]
+
+[licenses]
+private = { ignore = true, registries = ["embark"] }
+unlicensed = "deny"
+allow-osi-fsf-free = "neither"
+# We want really high confidence when inferring licenses from text
+confidence-threshold = 0.92
+copyleft = "deny"
+allow = [
+    # We skip our private workspace crates when doing license
+    # checks, so you will need to assign a proper license
+    # if you change a crate to be (publicly) published
+    #"LicenseRef-Embark-Proprietary",
+
+    "Apache-2.0",                     # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
+    "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
+    "MIT",                            # https://tldrlegal.com/license/mit-license
+    "Unicode-DFS-2016",               # https://spdx.org/licenses/Unicode-DFS-2016.html
+]
+
+# exceptions to our standard allowed licenses
+# be very careful about adding items here and make sure it is properly reviewed
+exceptions = []
