@@ -24,7 +24,7 @@ pub fn run_proto_gen(
     if format {
         recurse_fmt(new)?;
     }
-    let diff = run_diff(old, new)?;
+    let diff = run_diff(old, new, &top_mod_content)?;
     if diff > 0 {
         println!("Found diff in {diff} protos at {:?}", proto_ws.output_dir);
         if commit {
@@ -126,7 +126,8 @@ fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
         return Err("Top level module container is not a parent".to_string());
     };
     let mut sortable_children = children.into_values().collect::<Vec<ModuleContainer>>();
-    let mut top_level_mod = String::new();
+    // Linting, guh
+    let mut top_level_mod = "#![allow(clippy::doc_markdown)]\n".to_string();
     sortable_children.sort_by(|a, b| a.get_name().cmp(b.get_name()));
     for module in sortable_children {
         module.dump_to_disk()?;
@@ -282,6 +283,7 @@ fn as_file_name_string(path: impl AsRef<Path>) -> Result<String, String> {
 fn run_diff(
     orig: impl AsRef<Path> + Debug,
     new: impl AsRef<Path> + Debug,
+    new_mod: &str,
 ) -> Result<usize, String> {
     let orig_root = orig.as_ref();
     let orig_root_file_name = orig_root
@@ -315,6 +317,25 @@ fn run_diff(
             diff += 1;
         }
     }
+    let old_top_mod_name = as_file_name_string(&orig)?;
+
+    let old_top_mod_path = orig.as_ref().parent()
+        .ok_or_else(|| format!("Failed to diff module file, no parent dir found for out dir {orig_root:?}"))?
+        .join(format!("{old_top_mod_name}.rs"));
+    match fs::read(&old_top_mod_path) {
+        Ok(content) => {
+            if content != new_mod.as_bytes() {
+                diff += 1;
+            }
+        }
+        Err(ref e) if e.kind() == ErrorKind::NotFound => {
+            diff += 1
+        }
+        Err(e) => {
+            return Err(format!("Failed to read old mod file at {old_top_mod_path:?} {e}"));
+        }
+    };
+
     for _ in orig_files {
         diff += 1;
     }

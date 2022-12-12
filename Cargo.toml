@@ -1,15 +1,2 @@
 [workspace]
 members = ["proto-gen", "proto-gen-cli"]
-
-[patch.crates-io]
-# prost-build 0.10 added *throws up in mouth* cmake as a dependency, which is
-# not only banned but massively increases build times. We've made a PR to remove
-# cmake and replace it with a much smaller implementation, but it's been stuck
-# in review for over a month, with no end in sight. :(
-#
-# PR https://github.com/tokio-rs/prost/pull/620
-# branch = master
-prost = { git = "https://github.com/EmbarkStudios/prost", rev = "5281972" }
-prost-build = { git = "https://github.com/EmbarkStudios/prost", rev = "5281972" }
-prost-types = { git = "https://github.com/EmbarkStudios/prost", rev = "5281972" }
-prost-derive = { git = "https://github.com/EmbarkStudios/prost", rev = "5281972" }
