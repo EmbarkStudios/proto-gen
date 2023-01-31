@@ -23,8 +23,8 @@ impl TypedValueParser for KvValueParser {
                 );
             }
             e.insert(
-                clap::error::ContextKind::Usage,
-                clap::error::ContextValue::StyledStr(
+                ContextKind::Usage,
+                ContextValue::StyledStr(
                     "Both key and value of KV-pair must be valid UTF-8."
                         .to_owned()
                         .into(),
@@ -32,13 +32,15 @@ impl TypedValueParser for KvValueParser {
             );
 
             e.insert(
-                clap::error::ContextKind::InvalidValue,
-                clap::error::ContextValue::None,
+                ContextKind::InvalidValue,
+                ContextValue::None,
             );
             e
         })?;
 
-        if str_value.chars().filter(|c| c == &':').count() != 1 {
+        if let Some((k, v)) = str_value.split_once(':') {
+            Ok((k.to_owned(), v.to_owned()))
+        } else {
             let mut e = clap::Error::new(clap::error::ErrorKind::ValueValidation);
             if let Some(arg) = arg {
                 e.insert(
@@ -54,17 +56,9 @@ impl TypedValueParser for KvValueParser {
 
             e.insert(
                 ContextKind::Usage,
-                ContextValue::StyledStr("KV-pair must contain exactly one `:`.".to_owned().into()),
+                ContextValue::StyledStr("KV-pair must contain at least one `:`.".to_owned().into()),
             );
-
-            return Err(e);
+            Err(e)
         }
-        let mut parts = str_value.split(':');
-
-        // SAFETY: Unwrap OK; we know we have exactly one split, two elements.
-        Ok((
-            parts.next().unwrap().to_owned(),
-            parts.next().unwrap().to_owned(),
-        ))
     }
 }

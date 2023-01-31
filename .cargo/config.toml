@@ -1,0 +1,10 @@
+[profile.lto]
+inherits = "release"
+lto = true
+strip = true
+codegen-units = 1
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "target-feature=+crt-static"
+]
