@@ -1,11 +1,17 @@
 //! A Runner that extends proto-gen with a cli for code generation without direct build dependencies
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
+mod kv;
+use kv::KvValueParser;
+
 use std::fmt::Debug;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::Args;
+use clap::Parser;
+use clap::Subcommand;
 use tempfile::TempDir;
 use tonic_build::Builder;
 
@@ -33,12 +39,17 @@ struct TonicOpts {
     /// Whether to build client code
     #[clap(short = 'c', long)]
     build_client: bool,
-    /// Type attributes to add, key, must be equal to the amount of type attribute values
-    #[clap(short = 'k', long)]
-    type_attribute_keys: Vec<String>,
-    /// Type attributes to add, value, must be equal to the amount of type attribute values
-    #[clap(short = 'v', long)]
-    type_attribute_values: Vec<String>,
+    /// Type attributes to add.
+    #[clap(long = "type-attribute", value_parser=KvValueParser)]
+    type_attributes: Vec<(String, String)>,
+
+    /// Client mod attributes to add.
+    #[clap(long = "client-attribute", value_parser=KvValueParser)]
+    client_attributes: Vec<(String, String)>,
+
+    /// Server mod attributes to add.
+    #[clap(long = "server-attribute", value_parser=KvValueParser)]
+    server_attributes: Vec<(String, String)>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -100,23 +111,19 @@ fn main() -> Result<(), i32> {
     let mut bldr = tonic_build::configure()
         .build_client(opts.tonic_opts.build_client)
         .build_server(opts.tonic_opts.build_server);
-    if !opts.tonic_opts.type_attribute_keys.is_empty() {
-        if opts.tonic_opts.type_attribute_keys.len() != opts.tonic_opts.type_attribute_values.len()
-        {
-            eprintln!(
-                "Length mismatch on supplied `type_attribute_keys` and 'type_attribute_values`"
-            );
-            return Err(1);
-        }
-        for (k, v) in opts
-            .tonic_opts
-            .type_attribute_keys
-            .into_iter()
-            .zip(opts.tonic_opts.type_attribute_values.into_iter())
-        {
-            bldr = bldr.type_attribute(k, v);
-        }
+
+    for (k, v) in opts.tonic_opts.type_attributes.into_iter() {
+        bldr = bldr.type_attribute(k, v);
     }
+
+    for (k, v) in opts.tonic_opts.client_attributes.into_iter() {
+        bldr = bldr.client_mod_attribute(k, v);
+    }
+
+    for (k, v) in opts.tonic_opts.server_attributes.into_iter() {
+        bldr = bldr.server_mod_attribute(k, v);
+    }
+
     let fmt = opts.format;
     let res = match opts.routine {
         Routine::Validate { strategy } => match strategy {
@@ -169,7 +176,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
 }
 
 fn run_recursively(base: PathBuf, bldr: Builder, commit: bool, format: bool) -> Result<(), String> {
-    let proto_dirs = find_proto_dirs(&base)?;
+    let proto_dirs = find_proto_dirs(base)?;
     for dir in proto_dirs {
         proto_gen::run_proto_gen(
             ProtoWorkspace {
