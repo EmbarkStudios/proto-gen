@@ -39,6 +39,11 @@ struct TonicOpts {
     /// Whether to build client code
     #[clap(short = 'c', long)]
     build_client: bool,
+
+    /// Whether to generate the ::connect and similar functions for tonic.
+    #[clap(long)]
+    generate_transport: bool,
+
     /// Type attributes to add.
     #[clap(long = "type-attribute", value_parser=KvValueParser)]
     type_attributes: Vec<(String, String)>,
@@ -110,7 +115,8 @@ fn main() -> Result<(), i32> {
     let opts: Opts = Opts::parse();
     let mut bldr = tonic_build::configure()
         .build_client(opts.tonic_opts.build_client)
-        .build_server(opts.tonic_opts.build_server);
+        .build_server(opts.tonic_opts.build_server)
+        .build_transport(opts.tonic_opts.generate_transport);
 
     for (k, v) in opts.tonic_opts.type_attributes.into_iter() {
         bldr = bldr.type_attribute(k, v);
