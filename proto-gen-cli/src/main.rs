@@ -40,8 +40,10 @@ struct TonicOpts {
     #[clap(short = 'c', long)]
     build_client: bool,
 
+    /// Whether to generate the ::connect and similar functions for tonic.
     #[clap(long)]
     generate_transport: bool,
+
     /// Type attributes to add.
     #[clap(long = "type-attribute", value_parser=KvValueParser)]
     type_attributes: Vec<(String, String)>,
