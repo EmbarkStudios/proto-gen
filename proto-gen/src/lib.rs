@@ -127,7 +127,7 @@ fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
     };
     let mut sortable_children = children.into_values().collect::<Vec<ModuleContainer>>();
     // Linting, guh
-    let mut top_level_mod = "#![allow(clippy::doc_markdown)]\n".to_string();
+    let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
     sortable_children.sort_by(|a, b| a.get_name().cmp(b.get_name()));
     for module in sortable_children {
         module.dump_to_disk()?;
@@ -319,8 +319,12 @@ fn run_diff(
     }
     let old_top_mod_name = as_file_name_string(&orig)?;
 
-    let old_top_mod_path = orig.as_ref().parent()
-        .ok_or_else(|| format!("Failed to diff module file, no parent dir found for out dir {orig_root:?}"))?
+    let old_top_mod_path = orig
+        .as_ref()
+        .parent()
+        .ok_or_else(|| {
+            format!("Failed to diff module file, no parent dir found for out dir {orig_root:?}")
+        })?
         .join(format!("{old_top_mod_name}.rs"));
     match fs::read(&old_top_mod_path) {
         Ok(content) => {
@@ -328,11 +332,11 @@ fn run_diff(
                 diff += 1;
             }
         }
-        Err(ref e) if e.kind() == ErrorKind::NotFound => {
-            diff += 1
-        }
+        Err(ref e) if e.kind() == ErrorKind::NotFound => diff += 1,
         Err(e) => {
-            return Err(format!("Failed to read old mod file at {old_top_mod_path:?} {e}"));
+            return Err(format!(
+                "Failed to read old mod file at {old_top_mod_path:?} {e}"
+            ));
         }
     };
 
