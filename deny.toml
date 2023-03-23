@@ -13,6 +13,8 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = [
+    # Don't run this as root, unavoidable TOCTOU in remove_dir_all
+    "RUSTSEC-2023-0018",
 ]
 
 [bans]
@@ -111,9 +113,7 @@ allow-git = [
 ]
 
 [sources.allow-org]
-github = [
-    "EmbarkStudios",
-]
+github = []
 
 [licenses]
 private = { ignore = true, registries = ["embark"] }
