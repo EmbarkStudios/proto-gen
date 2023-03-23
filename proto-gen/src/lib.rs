@@ -1,4 +1,5 @@
 //! A library that generates Rust code using tonic-build and places that code in a supplied directory
+#![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
 use std::collections::HashMap;
@@ -10,13 +11,17 @@ use std::path::{Path, PathBuf};
 
 use tonic_build::Builder;
 
+/// Generate protos for the provided proto workspace
+/// # Errors
+/// Miscellaneous errors accessing the filesystem (such as permissions),
+/// and errors coming from `protoc`
 pub fn run_proto_gen(
-    proto_ws: ProtoWorkspace,
+    proto_ws: &ProtoWorkspace,
     opts: Builder,
     commit: bool,
     format: bool,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(&proto_ws, opts).map_err(|e| {
+    let top_mod_content = generate_to_tmp(proto_ws, opts).map_err(|e| {
         format!("Failed to generate prots into temp dir for proto workspace {proto_ws:?} {e}")
     })?;
     let old = &proto_ws.output_dir;
@@ -32,14 +37,11 @@ pub fn run_proto_gen(
             recurse_copy_clean(new, old)?;
             let out_top_name = as_file_name_string(old)?;
             let out_parent = old.parent().ok_or_else(|| {
-                format!(
-                    "Failed to find parent for output dir {:?} to place mod file",
-                    old
-                )
+                format!("Failed to find parent for output dir {old:?} to place mod file")
             })?;
             let mod_file = out_parent.join(format!("{out_top_name}.rs"));
             fs::write(&mod_file, top_mod_content.as_bytes())
-                .map_err(|e| format!("Failed to write parent module file to {:?} {e}", mod_file))?;
+                .map_err(|e| format!("Failed to write parent module file to {mod_file:?} {e}"))?;
         } else {
             return Err(format!("Found {diff} diffs at {:?}", proto_ws.output_dir));
         }
@@ -85,15 +87,15 @@ fn generate_to_tmp(workspace: &ProtoWorkspace, opts: Builder) -> Result<String, 
         &workspace.tmp_dir,
         opts,
     )?;
-    clean_up_file_structure(workspace.tmp_dir.clone())
+    clean_up_file_structure(&workspace.tmp_dir)
 }
 
-fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
-    let rd = fs::read_dir(&out_dir)
+fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
+    let rd = fs::read_dir(out_dir)
         .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files {e}"))?;
     let mut out_modules = ModuleContainer::Parent {
         name: "dummy".to_string(),
-        location: out_dir.clone(),
+        location: out_dir.to_path_buf(),
         children: HashMap::new(),
     };
     for entry in rd {
@@ -107,18 +109,14 @@ fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
         let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entity {file_path:?} in output dir {out_dir:?} when cleaning up files {e}"))?;
         if metadata.is_file() {
             // Tonic build 0.7 generates a bunch of empty files for some reason, fixed in 0.8
-            let content = fs::read(&file_path).map_err(|e| {
-                format!("Failed to read generated file at path {:?} {e}", file_path)
-            })?;
+            let content = fs::read(&file_path)
+                .map_err(|e| format!("Failed to read generated file at path {file_path:?} {e}"))?;
             if content.is_empty() {
                 fs::remove_file(&file_path).map_err(|e| {
-                    format!(
-                        "Failed to delete empty file {:?} from temp directory {e}",
-                        file_path
-                    )
+                    format!("Failed to delete empty file {file_path:?} from temp directory {e}")
                 })?;
             } else {
-                out_modules.push_file(&out_dir, &file_path)?;
+                out_modules.push_file(out_dir, &file_path)?;
             }
         }
     }
@@ -234,7 +232,7 @@ impl ModuleContainer {
                 }
                 let mod_file_location = location.join(format!("{name}.rs"));
                 fs::write(&mod_file_location, output.as_bytes()).map_err(|e| {
-                    format!("Failed to write module file at {:?} {e}", mod_file_location)
+                    format!("Failed to write module file at {mod_file_location:?} {e}")
                 })?;
                 Ok(())
             }
@@ -248,13 +246,10 @@ impl ModuleContainer {
                     return Ok(());
                 }
                 fs::copy(file, &file_location).map_err(|e| {
-                    format!(
-                        "Failed to copy module file from {:?} to {:?} {e}",
-                        file, file_location
-                    )
+                    format!("Failed to copy module file from {file:?} to {file_location:?} {e}")
                 })?;
                 fs::remove_file(file)
-                    .map_err(|e| format!("Failed to remove original file from {:?} {e}", file))?;
+                    .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
                 Ok(())
             }
         }
@@ -486,8 +481,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
             .metadata()
             .map_err(|e| format!("Failed to read metadata for entry {entry:?} {e}"))?;
         let path = entry.path();
-        let file_name = as_file_name_string(&path)?;
-        if metadata.is_file() && file_name.ends_with(".rs") {
+        if metadata.is_file() && has_ext(&path, "rs") {
             let out = std::process::Command::new("rustfmt")
                 .arg(path)
                 .arg("--edition")
@@ -506,4 +500,11 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+#[inline]
+#[must_use]
+pub fn has_ext(path: &Path, ext: &str) -> bool {
+    path.file_name()
+        .map_or(false, |p| p.eq_ignore_ascii_case(ext))
 }

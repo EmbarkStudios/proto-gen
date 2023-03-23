@@ -31,10 +31,7 @@ impl TypedValueParser for KvValueParser {
                 ),
             );
 
-            e.insert(
-                ContextKind::InvalidValue,
-                ContextValue::None,
-            );
+            e.insert(ContextKind::InvalidValue, ContextValue::None);
             e
         })?;
 

@@ -1,4 +1,5 @@
 //! A Runner that extends proto-gen with a cli for code generation without direct build dependencies
+#![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
 mod kv;
@@ -118,15 +119,15 @@ fn main() -> Result<(), i32> {
         .build_server(opts.tonic_opts.build_server)
         .build_transport(opts.tonic_opts.generate_transport);
 
-    for (k, v) in opts.tonic_opts.type_attributes.into_iter() {
+    for (k, v) in opts.tonic_opts.type_attributes {
         bldr = bldr.type_attribute(k, v);
     }
 
-    for (k, v) in opts.tonic_opts.client_attributes.into_iter() {
+    for (k, v) in opts.tonic_opts.client_attributes {
         bldr = bldr.client_mod_attribute(k, v);
     }
 
-    for (k, v) in opts.tonic_opts.server_attributes.into_iter() {
+    for (k, v) in opts.tonic_opts.server_attributes {
         bldr = bldr.server_mod_attribute(k, v);
     }
 
@@ -134,11 +135,11 @@ fn main() -> Result<(), i32> {
     let res = match opts.routine {
         Routine::Validate { strategy } => match strategy {
             Strategy::Workspace { workspace } => run_ws(workspace, bldr, false, fmt),
-            Strategy::Recursive { base } => run_recursively(base, bldr, false, fmt),
+            Strategy::Recursive { base } => run_recursively(base, &bldr, false, fmt),
         },
         Routine::Generate { strategy } => match strategy {
             Strategy::Workspace { workspace } => run_ws(workspace, bldr, true, fmt),
-            Strategy::Recursive { base } => run_recursively(base, bldr, true, fmt),
+            Strategy::Recursive { base } => run_recursively(base, &bldr, true, fmt),
         },
     };
     if let Err(err) = res {
@@ -154,7 +155,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
     }
     if let Some(tmp) = opts.tmp_dir {
         proto_gen::run_proto_gen(
-            ProtoWorkspace {
+            &ProtoWorkspace {
                 proto_dir: opts.proto_dir,
                 proto_files: opts.proto_files,
                 tmp_dir: tmp,
@@ -168,7 +169,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
         // Deleted on drop
         let tmp = tempfile::tempdir().map_err(|e| format!("Failed to create tempdir {e}"))?;
         proto_gen::run_proto_gen(
-            ProtoWorkspace {
+            &ProtoWorkspace {
                 proto_dir: opts.proto_dir,
                 proto_files: opts.proto_files,
                 tmp_dir: tmp.path().to_path_buf(),
@@ -181,11 +182,16 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
     }
 }
 
-fn run_recursively(base: PathBuf, bldr: Builder, commit: bool, format: bool) -> Result<(), String> {
+fn run_recursively(
+    base: PathBuf,
+    bldr: &Builder,
+    commit: bool,
+    format: bool,
+) -> Result<(), String> {
     let proto_dirs = find_proto_dirs(base)?;
     for dir in proto_dirs {
         proto_gen::run_proto_gen(
-            ProtoWorkspace {
+            &ProtoWorkspace {
                 proto_dir: dir.proto_dir,
                 proto_files: dir.proto_files,
                 tmp_dir: dir.tmp_dir.path().to_path_buf(),
@@ -222,16 +228,13 @@ fn find_proto_dirs(base: impl AsRef<Path> + Debug) -> Result<Vec<FoundWorkspace>
     sub_dirs.sort();
     let mut protodirs = vec![];
     for path in sub_dirs {
-        let path_str = path
-            .to_str()
-            .ok_or_else(|| format!("Found non-utf8 path {path:?} while searching for protos"))?;
         let metadata = path
             .metadata()
             .map_err(|e| format!("Failed to get metadata for path {path:?} {e}"))?;
         if metadata.is_dir() {
             // Recursively find directory containing proto files
             protodirs.extend(find_proto_dirs(path.clone())?);
-        } else if path_str.ends_with(".proto") {
+        } else if has_proto_ext(&path) {
             // Found a proto containing dir
             let proto_dir = path.parent().ok_or_else(|| format!("Stepped back up one directory without finding parent, nonsensical error, path {path:?}"))?;
             let mut proto_files = vec![];
@@ -241,15 +244,9 @@ fn find_proto_dirs(base: impl AsRef<Path> + Debug) -> Result<Vec<FoundWorkspace>
                 let sub = sub.map_err(|e| {
                     format!("Failed to get DirEntry while traversiong {path:?} {e}")
                 })?;
-                let file_name = sub.file_name();
-                let file_name_str = file_name.to_str().ok_or_else(|| {
-                    format!(
-                        "Found entry in proto dir {:?} with a non-utf8 name {:?}",
-                        proto_dir, file_name
-                    )
-                })?;
-                if file_name_str.ends_with(".proto") {
-                    proto_files.push(sub.path());
+                let sub_path = sub.path();
+                if has_proto_ext(&sub_path) {
+                    proto_files.push(sub_path);
                 }
             }
             proto_files.sort();
@@ -273,4 +270,9 @@ fn find_proto_dirs(base: impl AsRef<Path> + Debug) -> Result<Vec<FoundWorkspace>
     }
     protodirs.sort_by(|a, b| a.proto_dir.cmp(&b.proto_dir));
     Ok(protodirs)
+}
+
+fn has_proto_ext(path: &Path) -> bool {
+    path.extension()
+        .map_or(false, |p| p.eq_ignore_ascii_case("proto"))
 }
