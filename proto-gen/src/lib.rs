@@ -53,7 +53,7 @@ pub fn run_proto_gen(
 
 #[derive(Debug)]
 pub struct ProtoWorkspace {
-    pub proto_dir: PathBuf,
+    pub proto_dirs: Vec<PathBuf>,
     pub proto_files: Vec<PathBuf>,
     pub tmp_dir: PathBuf,
     pub output_dir: PathBuf,
@@ -61,7 +61,7 @@ pub struct ProtoWorkspace {
 
 #[inline]
 fn gen_proto(
-    src_dir: impl AsRef<Path> + Debug,
+    src_dirs: &[impl AsRef<Path> + Debug],
     src_files: &[impl AsRef<Path>],
     out_dir: impl AsRef<OsStr>,
     opts: Builder,
@@ -69,8 +69,8 @@ fn gen_proto(
     let old_out = std::env::var("OUT_DIR");
     std::env::set_var("OUT_DIR", out_dir);
     // Would by nice if we could just get a byte buffer instead of magic env write
-    opts.compile(src_files, &[&src_dir])
-        .map_err(|e| format!("Failed to compile protos from {src_dir:?} {e}"))?;
+    opts.compile(src_files, src_dirs)
+        .map_err(|e| format!("Failed to compile protos from {src_dirs:?} {e}"))?;
     // Restore the env, cause why not
     if let Ok(old) = old_out {
         std::env::set_var("OUT_DIR", old);
@@ -82,7 +82,7 @@ fn gen_proto(
 
 fn generate_to_tmp(workspace: &ProtoWorkspace, opts: Builder) -> Result<String, String> {
     gen_proto(
-        &workspace.proto_dir,
+        &workspace.proto_dirs,
         &workspace.proto_files,
         &workspace.tmp_dir,
         opts,

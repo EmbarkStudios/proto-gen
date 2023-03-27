@@ -5,4 +5,8 @@ pub struct TestMessage {
     pub field_one: i32,
     #[prost(string, tag = "2")]
     pub field_two: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "3")]
+    pub important_message: ::core::option::Option<
+        super::dep_protos::important::MyImportantMessage,
+    >,
 }

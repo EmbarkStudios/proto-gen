@@ -70,9 +70,9 @@ enum Routine {
 
 #[derive(Debug, Args)]
 struct WorkspaceOpts {
-    /// The directory containing proto files
+    /// Directories containing proto files to source.
     #[clap(short = 'd', long)]
-    proto_dir: PathBuf,
+    proto_dirs: Vec<PathBuf>,
     /// The files to be included in generation
     #[clap(short = 'f', long)]
     proto_files: Vec<PathBuf>,
@@ -124,7 +124,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
     if let Some(tmp) = opts.tmp_dir {
         proto_gen::run_proto_gen(
             &ProtoWorkspace {
-                proto_dir: opts.proto_dir,
+                proto_dirs: opts.proto_dirs,
                 proto_files: opts.proto_files,
                 tmp_dir: tmp,
                 output_dir: opts.output_dir,
@@ -138,7 +138,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
         let tmp = tempfile::tempdir().map_err(|e| format!("Failed to create tempdir {e}"))?;
         proto_gen::run_proto_gen(
             &ProtoWorkspace {
-                proto_dir: opts.proto_dir,
+                proto_dirs: opts.proto_dirs,
                 proto_files: opts.proto_files,
                 tmp_dir: tmp.path().to_path_buf(),
                 output_dir: opts.output_dir,
