@@ -13,8 +13,6 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = [
-    # Don't run this as root, unavoidable TOCTOU in remove_dir_all
-    "RUSTSEC-2023-0018",
 ]
 
 [bans]
@@ -93,7 +91,10 @@ deny = [
     { name = "owning_ref" },        # unsound and unmaintained
 ]
 
-skip = []
+skip = [
+    # Syn 2.0 migration is going to take some time
+    { name = "syn", version = "1.0.109" },
+]
 
 skip-tree = []
 
