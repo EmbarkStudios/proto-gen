@@ -505,6 +505,6 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
 #[inline]
 #[must_use]
 pub fn has_ext(path: &Path, ext: &str) -> bool {
-    path.file_name()
+    path.extension()
         .map_or(false, |p| p.eq_ignore_ascii_case(ext))
 }
