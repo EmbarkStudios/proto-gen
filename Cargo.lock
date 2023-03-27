@@ -317,15 +317,7 @@ dependencies = [
 name = "proto-gen"
 version = "0.1.0"
 dependencies = [
- "tonic-build",
-]
-
-[[package]]
-name = "proto-gen-cli"
-version = "0.1.0"
-dependencies = [
  "clap",
- "proto-gen",
  "tempfile",
  "tonic-build",
 ]

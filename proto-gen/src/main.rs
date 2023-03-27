@@ -2,7 +2,9 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
+mod gen;
 mod kv;
+
 use kv::KvValueParser;
 
 use std::fmt::Debug;
@@ -13,8 +15,9 @@ use clap::Parser;
 use clap::Subcommand;
 use tonic_build::Builder;
 
-use proto_gen::ProtoWorkspace;
+use gen::ProtoWorkspace;
 
+/// A simple runner that generates and moved rust-files form protos tonic-build into a workspace.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Opts {
@@ -32,6 +35,7 @@ struct TonicOpts {
     /// Whether to build server code
     #[clap(short = 's', long)]
     build_server: bool,
+
     /// Whether to build client code
     #[clap(short = 'c', long)]
     build_client: bool,
@@ -61,6 +65,7 @@ enum Routine {
         #[clap(flatten)]
         workspace: WorkspaceOpts,
     },
+
     /// Generate new Rust code for proto files, overwriting old files if present
     Generate {
         #[clap(flatten)]
@@ -70,16 +75,20 @@ enum Routine {
 
 #[derive(Debug, Args)]
 struct WorkspaceOpts {
-    /// Directories containing proto files to source.
+    /// Directories containing proto files to source (Ex. Dependencies),
+    /// needs to include any directory containing files to be included in generation.
     #[clap(short = 'd', long)]
     proto_dirs: Vec<PathBuf>,
-    /// The files to be included in generation
+
+    /// The files to be included in generation.
     #[clap(short = 'f', long)]
     proto_files: Vec<PathBuf>,
+
     /// Temporary working directory, if left blank, `tempfile` is used to create a temporary
     /// directory.
     #[clap(short, long)]
     tmp_dir: Option<PathBuf>,
+
     /// Where to place output files. Will get cleaned up (all contents deleted)
     /// A module file will be placed in the parent of this directory.
     #[clap(short, long)]
@@ -122,7 +131,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
         return Err("--proto-files needs at least one file to generate".to_string());
     }
     if let Some(tmp) = opts.tmp_dir {
-        proto_gen::run_proto_gen(
+        gen::run_generation(
             &ProtoWorkspace {
                 proto_dirs: opts.proto_dirs,
                 proto_files: opts.proto_files,
@@ -136,7 +145,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
     } else {
         // Deleted on drop
         let tmp = tempfile::tempdir().map_err(|e| format!("Failed to create tempdir {e}"))?;
-        proto_gen::run_proto_gen(
+        gen::run_generation(
             &ProtoWorkspace {
                 proto_dirs: opts.proto_dirs,
                 proto_files: opts.proto_files,

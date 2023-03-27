@@ -1,5 +1,5 @@
 [workspace]
-members = ["proto-gen", "proto-gen-cli"]
+members = ["proto-gen"]
 exclude = ["examples/example-project"]
 
 [workspace.dependencies]

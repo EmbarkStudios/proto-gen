@@ -15,7 +15,7 @@ use tonic_build::Builder;
 /// # Errors
 /// Miscellaneous errors accessing the filesystem (such as permissions),
 /// and errors coming from `protoc`
-pub fn run_proto_gen(
+pub fn run_generation(
     proto_ws: &ProtoWorkspace,
     opts: Builder,
     commit: bool,
