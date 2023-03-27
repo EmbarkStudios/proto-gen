@@ -8,7 +8,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
 proto-gen = { path = "../proto-gen" }
-tempfile = "3.3.0"
-tonic-build = { version = "0.8.4", default-features = false, features = ["transport", "prost"] }
+tempfile = { workspace = true }
+tonic-build = { workspace = true, default-features = false, features = ["transport", "prost"] }
