@@ -6,19 +6,14 @@ mod kv;
 use kv::KvValueParser;
 
 use std::fmt::Debug;
-use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
-use tempfile::TempDir;
 use tonic_build::Builder;
 
 use proto_gen::ProtoWorkspace;
-
-const GENERATED_OUT_BASE_NAME: &str = "proto_types";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -63,34 +58,13 @@ enum Routine {
     /// Generate new Rust code for proto files, checking current files for differences.
     /// Returns error code 1 on any found differences.
     Validate {
-        #[command(subcommand)]
-        strategy: Strategy,
-    },
-    /// Generate new Rust code for proto files, overwriting old files if present
-    Generate {
-        #[command(subcommand)]
-        strategy: Strategy,
-    },
-}
-
-#[derive(Subcommand, Debug)]
-enum Strategy {
-    /// Only target a specific workspace
-    Workspace {
-        /// Specifically generate files for this workspace
         #[clap(flatten)]
         workspace: WorkspaceOpts,
     },
-    /// Recursively search from a base directory to find proto files.
-    /// Running recursively forces some project assumption. Will only work with a project structure
-    /// that has root/proto (for `*.proto` files, not nested), root/src (for code),
-    /// will destructively create src/proto_types to place rust-code, and will create a tempdir for
-    /// temporary files. The structure is validated, but assuming a valid structure, all data at
-    /// /root/proto_types will be replaced if running `generate`
-    Recursive {
-        /// Start recursively searching from this directory
-        #[clap(short, long)]
-        base: PathBuf,
+    /// Generate new Rust code for proto files, overwriting old files if present
+    Generate {
+        #[clap(flatten)]
+        workspace: WorkspaceOpts,
     },
 }
 
@@ -133,14 +107,8 @@ fn main() -> Result<(), i32> {
 
     let fmt = opts.format;
     let res = match opts.routine {
-        Routine::Validate { strategy } => match strategy {
-            Strategy::Workspace { workspace } => run_ws(workspace, bldr, false, fmt),
-            Strategy::Recursive { base } => run_recursively(base, &bldr, false, fmt),
-        },
-        Routine::Generate { strategy } => match strategy {
-            Strategy::Workspace { workspace } => run_ws(workspace, bldr, true, fmt),
-            Strategy::Recursive { base } => run_recursively(base, &bldr, true, fmt),
-        },
+        Routine::Validate { workspace } => run_ws(workspace, bldr, false, fmt),
+        Routine::Generate { workspace } => run_ws(workspace, bldr, true, fmt),
     };
     if let Err(err) = res {
         eprintln!("Failed to run command, E: {err}");
@@ -180,99 +148,4 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
             format,
         )
     }
-}
-
-fn run_recursively(
-    base: PathBuf,
-    bldr: &Builder,
-    commit: bool,
-    format: bool,
-) -> Result<(), String> {
-    let proto_dirs = find_proto_dirs(base)?;
-    for dir in proto_dirs {
-        proto_gen::run_proto_gen(
-            &ProtoWorkspace {
-                proto_dir: dir.proto_dir,
-                proto_files: dir.proto_files,
-                tmp_dir: dir.tmp_dir.path().to_path_buf(),
-                output_dir: dir.output_dir,
-            },
-            bldr.clone(),
-            commit,
-            format,
-        )?;
-    }
-    Ok(())
-}
-
-#[derive(Debug)]
-struct FoundWorkspace {
-    proto_dir: PathBuf,
-    proto_files: Vec<PathBuf>,
-    tmp_dir: TempDir,
-    output_dir: PathBuf,
-}
-
-fn find_proto_dirs(base: impl AsRef<Path> + Debug) -> Result<Vec<FoundWorkspace>, String> {
-    let rd = fs::read_dir(&base)
-        .map_err(|e| format!("Failed to read base path to search for protobufs {base:?} {e}"))?;
-    // Since we need to validate this later, and protobuf files are merged by package because
-    // of course they are, we need to iterate in order......... SCREAM
-    let mut sub_dirs = vec![];
-    for dir in rd {
-        let d = dir.map_err(|e| {
-            format!("Failed to read DirEntry while recursively looking for proto files {e}")
-        })?;
-        sub_dirs.push(d.path());
-    }
-    sub_dirs.sort();
-    let mut protodirs = vec![];
-    for path in sub_dirs {
-        let metadata = path
-            .metadata()
-            .map_err(|e| format!("Failed to get metadata for path {path:?} {e}"))?;
-        if metadata.is_dir() {
-            // Recursively find directory containing proto files
-            protodirs.extend(find_proto_dirs(path.clone())?);
-        } else if has_proto_ext(&path) {
-            // Found a proto containing dir
-            let proto_dir = path.parent().ok_or_else(|| format!("Stepped back up one directory without finding parent, nonsensical error, path {path:?}"))?;
-            let mut proto_files = vec![];
-            for sub in
-                fs::read_dir(proto_dir).map_err(|e| format!("Failed to read proto dir {e}"))?
-            {
-                let sub = sub.map_err(|e| {
-                    format!("Failed to get DirEntry while traversiong {path:?} {e}")
-                })?;
-                let sub_path = sub.path();
-                if has_proto_ext(&sub_path) {
-                    proto_files.push(sub_path);
-                }
-            }
-            proto_files.sort();
-            let workspace_root = proto_dir
-                .parent()
-                .ok_or_else(|| format!("Found no parent for proto dir {proto_dir:?}"))?
-                .to_path_buf();
-            let tmp =
-                tempfile::tempdir().map_err(|e| format!("Failed to create a temp dir {e}"))?;
-            let src_root = workspace_root.join("src");
-            let output_dir = src_root.join(GENERATED_OUT_BASE_NAME);
-            protodirs.push(FoundWorkspace {
-                proto_dir: proto_dir.to_path_buf(),
-                proto_files,
-                tmp_dir: tmp,
-                output_dir,
-            });
-            // We're assuming no nesting to make things simpler
-            break;
-        }
-    }
-    protodirs.sort_by(|a, b| a.proto_dir.cmp(&b.proto_dir));
-    Ok(protodirs)
-}
-
-fn has_proto_ext(path: &Path) -> bool {
-    path.extension()
-        .map_or(false, |p| p.eq_ignore_ascii_case("proto"))
 }

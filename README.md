@@ -71,7 +71,7 @@ Generate types from a `.proto` into an project.
 
 #### Example in this project
 ```bash
-cargo r -r -p proto-gen-cli -- generate workspace -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen-cli -- generate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
 ```
 
 
