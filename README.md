@@ -85,13 +85,12 @@ If it finds any diffs it will exit with error code 1 and a message.
 If we want to use includes, the directory to include needs to be specified.  
 
 ```bash 
-cargo r -r -p proto-gen-cli -- generate -d examples/example-project/dep_protos -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen-cli -- generate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
 ```
 Here we're passing -d twice, once to include the dependency protos, and one to include the protos we want to generate.  
-
-
-
-
+```bash 
+cargo r -r -p proto-gen-cli -- validate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
+```
 
 ## Contributing
 
