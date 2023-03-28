@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - mg/cleanup
     tags:
       - "*"
   pull_request:
@@ -36,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - uses: baptiste0928/cargo-install@v1
+      - uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-nextest
           locked: true
@@ -53,12 +54,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install protoc
         run: |
-          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
-          curl -LO $PB_REL/download/v22.2/protoc-22.2-linux-x86_64.zip
+          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v22.2/protoc-22.2-linux-x86_64.zip"
           mkdir ~/.local
           unzip protoc-22.2-linux-x86_64.zip -d ~/.local
           export PATH="PATH:$HOME/.local/bin"
-      - uses: baptiste0928/cargo-install@v1
+      - uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-tarpaulin
           locked: true
@@ -77,7 +77,7 @@ jobs:
           mkdir ~/.local
           unzip protoc-22.2-linux-x86_64.zip -d ~/.local
           export PATH="PATH:$HOME/.local/bin"
-      - uses: baptiste0928/cargo-install@v1
+      - uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-nextest
           locked: true
