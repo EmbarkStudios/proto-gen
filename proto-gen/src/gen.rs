@@ -2,7 +2,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{Debug, Write};
 use std::fs;
@@ -296,7 +296,7 @@ fn run_diff(
     let new_files = collect_files(&new, new_root_file)?;
     let mut diff = 0;
     for file in &new_files {
-        if vec_remove(file, &mut orig_files) {
+        if orig_files.remove(file) {
             let orig_path = orig.as_ref().join(file);
             let new_path = new.as_ref().join(file);
             let a = fs::read(&orig_path)
@@ -341,22 +341,11 @@ fn run_diff(
     Ok(diff)
 }
 
-#[inline]
-fn vec_remove(needle: &PathBuf, haystack: &mut Vec<PathBuf>) -> bool {
-    for i in 0..haystack.len() {
-        if needle == &haystack[i] {
-            haystack.swap_remove(i);
-            return true;
-        }
-    }
-    false
-}
-
-fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<PathBuf>, String> {
+fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<HashSet<PathBuf>, String> {
     let rd = fs::read_dir(&source);
     match rd {
         Ok(rd) => {
-            let mut all_files = Vec::new();
+            let mut all_files = HashSet::new();
             for entry in rd {
                 let entry = entry.map_err(|e| {
                     format!("Failed to read entry when checking for file diff at {source:?} {e}")
@@ -365,7 +354,7 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<Pat
                 let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entry {entry_path:?} when checking for file diff at {source:?} {e}"))?;
                 if metadata.is_file() {
                     let pb = path_from_starts_with(root, &entry_path)?;
-                    all_files.push(pb);
+                    all_files.insert(pb);
                 } else if metadata.is_dir() {
                     all_files.extend(collect_files(entry_path, root)?);
                 } else {
@@ -374,7 +363,7 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<Pat
             }
             Ok(all_files)
         }
-        Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
+        Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(HashSet::new()),
         Err(e) => Err(format!(
             "Got error reading dir {source:?} to check diff {e}"
         )),
@@ -415,7 +404,7 @@ fn recurse_copy_clean(
     Ok(())
 }
 
-fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Result<(), String> {
+fn recurse_copy_over(dest_top: &Path, entry: impl AsRef<Path> + Debug) -> Result<(), String> {
     let path = entry.as_ref();
     let metadata = path.metadata().map_err(|e| {
         format!("Failed to get metadata for {path:?} to copy to generated protos from {e}")
@@ -423,7 +412,7 @@ fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Re
     let last_component = path
         .file_name()
         .ok_or_else(|| format!("Failed to find file name in path {path:?}"))?;
-    let new_dir = transfer_top.join(last_component);
+    let new_dir = dest_top.join(last_component);
     if metadata.is_file() {
         fs::copy(path, &new_dir).map_err(|e| {
             format!("Failed to copy generated file from {path:?} to {new_dir:?} E: {e}")
@@ -450,8 +439,9 @@ fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Re
 
 #[inline]
 fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<PathBuf, String> {
-    let mut components = path.as_ref().components();
+    let mut components = path.as_ref().components().rev();
     let mut found_root = false;
+    let mut backwards_components = vec![];
     for component in components.by_ref() {
         let out_str = component.as_os_str();
         let out_str = out_str
@@ -460,14 +450,17 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
         if out_str.starts_with(root) {
             found_root = true;
             break;
+        } else {
+            backwards_components.push(component);
         }
     }
     if !found_root {
         return Err(format!(
-            "Failed to trim path up to {root} for proto generated file at {path:?}"
+            "Failed to trim path up to {root} for proto generated file at: {path:?}. Could not find {root}. "
         ));
     }
-    let pb = components.collect::<PathBuf>();
+    backwards_components.reverse();
+    let pb = backwards_components.into_iter().collect::<PathBuf>();
     Ok(pb)
 }
 
@@ -507,4 +500,28 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
 pub fn has_ext(path: &Path, ext: &str) -> bool {
     path.extension()
         .map_or(false, |p| p.eq_ignore_ascii_case(ext))
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use crate::gen::path_from_starts_with;
+
+    #[test]
+    fn can_find_path_from_some_root_exists() {
+        let this_file = Path::new("src/gen.rs");
+        let abs = this_file.canonicalize().unwrap();
+        let root = "proto-gen";
+        let found = path_from_starts_with(root, &abs).unwrap();
+        assert_eq!(this_file.to_path_buf(), found);
+    }
+
+    #[test]
+    fn can_find_path_from_some_root_missing() {
+        let this_file = Path::new("src/gen.rs");
+        let abs = this_file.canonicalize().unwrap();
+        let root = "not-found-af38cd-9fxzz7p-- ";
+        assert!(path_from_starts_with(root, &abs).is_err());
+    }
 }
