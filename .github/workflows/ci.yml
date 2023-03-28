@@ -27,8 +27,8 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test
+  test-local:
+    name: Test local
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
@@ -36,11 +36,56 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
+      - uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
       - run: cargo fetch
       - name: cargo test build
-        run: cargo build --tests
-      - name: cargo test
-        run: cargo test
+        run: cargo build --tests -r
+      - name: cargo nextest
+        run: cargo nextest run -r
+
+  coverage-check:
+    name: coverage-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install protoc
+        run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v22.2/protoc-22.2-linux-x86_64.zip
+          mkdir ~/.local
+          unzip protoc-22.2-linux-x86_64.zip -d ~/.local
+          export PATH="PATH:$HOME/.local/bin"
+      - uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-tarpaulin
+          locked: true
+      - name: cargo tarpaulin
+        run: cargo tarpaulin --profile release --features protoc-tests
+
+  protoc-tests:
+    name: protoc-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install protoc
+        run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v22.2/protoc-22.2-linux-x86_64.zip
+          mkdir ~/.local
+          unzip protoc-22.2-linux-x86_64.zip -d ~/.local
+          export PATH="PATH:$HOME/.local/bin"
+      - uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
+      - run: cargo fetch
+      - name: cargo test build
+        run: cargo build --tests -r --features protoc-tests
+      - name: cargo nextest
+        run: cargo nextest run -r --features protoc-tests
 
   deny-check:
     name: cargo-deny
