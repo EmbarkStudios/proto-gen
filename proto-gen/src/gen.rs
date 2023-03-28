@@ -502,11 +502,10 @@ pub fn has_ext(path: &Path, ext: &str) -> bool {
         .map_or(false, |p| p.eq_ignore_ascii_case(ext))
 }
 
-
 #[cfg(test)]
 mod tests {
+    use crate::gen::{path_from_starts_with, run_diff};
     use std::path::Path;
-    use crate::gen::path_from_starts_with;
 
     #[test]
     fn can_find_path_from_some_root_exists() {
@@ -523,5 +522,41 @@ mod tests {
         let abs = this_file.canonicalize().unwrap();
         let root = "not-found-af38cd-9fxzz7p-- ";
         assert!(path_from_starts_with(root, &abs).is_err());
+    }
+
+    #[test]
+    fn can_diff_both_empty() {
+        let empty_temp1 = tempfile::tempdir().unwrap();
+        let empty_temp2 = tempfile::tempdir().unwrap();
+        let diff = run_diff(&empty_temp1.path(), &empty_temp2.path(), "my-mod").unwrap();
+        // One diff, would write a module file
+        assert_eq!(1, diff);
+    }
+
+    #[test]
+    fn can_diff_identical() {
+        let proto_mod = "proto_types";
+        let my_mod = "my_mod";
+        let expect_top_content = format!("pub mod {my_mod};\n");
+        let orig = tempfile::tempdir().unwrap();
+        let orig_mod_dir = orig.path().join(proto_mod);
+        std::fs::create_dir(&orig_mod_dir).unwrap();
+        std::fs::write(&orig_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        std::fs::write(
+            orig.path().join(format!("{proto_mod}.rs")),
+            &expect_top_content,
+        )
+        .unwrap();
+        let new = tempfile::tempdir().unwrap();
+        let new_mod_dir = new.path().join(proto_mod);
+        std::fs::create_dir(&new_mod_dir).unwrap();
+        std::fs::write(
+            new.path().join(format!("{proto_mod}.rs")),
+            &expect_top_content,
+        )
+        .unwrap();
+        std::fs::write(&new_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        let diff = run_diff(&orig_mod_dir, &new_mod_dir, &expect_top_content).unwrap();
+        assert_eq!(0, diff);
     }
 }

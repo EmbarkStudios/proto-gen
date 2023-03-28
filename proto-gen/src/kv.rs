@@ -59,3 +59,101 @@ impl TypedValueParser for KvValueParser {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+    use std::ffi::OsStr;
+    use clap::builder::TypedValueParser;
+    use clap::{Arg, Command};
+    use clap::error::{ContextKind, ErrorKind};
+    use crate::kv::KvValueParser;
+
+    #[test]
+    fn happy_case_kv() {
+        let cmd = Command::new("any");
+        let a = None;
+        let value = OsStr::new("key:value");
+        let (key, value) = KvValueParser::default().parse_ref(&cmd, a, value).unwrap();
+        assert_eq!("key", &key);
+        assert_eq!("value", &value);
+    }
+
+    #[test]
+    fn sad_case_bad_kv_no_arg() {
+        let cmd = Command::new("any");
+        let a = None;
+        let value = OsStr::new("key-value");
+        let Err(e) = KvValueParser::default().parse_ref(&cmd, a, value) else {
+            panic!("Expected error on bad kv");
+        };
+        assert_eq!(ErrorKind::ValueValidation, e.kind());
+        let mut expect_ctx = HashSet::new();
+        expect_ctx.insert(ContextKind::InvalidValue);
+        expect_ctx.insert(ContextKind::Usage);
+        for (kind, _ctx) in e.context() {
+            assert!(expect_ctx.remove(&kind));
+        }
+        assert!(expect_ctx.is_empty());
+    }
+
+    #[test]
+    fn sad_case_bad_kv_with_arg() {
+        let cmd = Command::new("any");
+        let a = Some(Arg::new("my_id"));
+        let value = OsStr::new("key-value");
+        let Err(e) = KvValueParser::default().parse_ref(&cmd, a.as_ref(), value) else {
+            panic!("Expected error on bad kv");
+        };
+        assert_eq!(ErrorKind::ValueValidation, e.kind());
+        let mut expect_ctx = HashSet::new();
+        expect_ctx.insert(ContextKind::InvalidArg);
+        expect_ctx.insert(ContextKind::InvalidValue);
+        expect_ctx.insert(ContextKind::Usage);
+        for (kind, _ctx) in e.context() {
+            assert!(expect_ctx.remove(&kind));
+        }
+        assert!(expect_ctx.is_empty());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn os_str_not_utf8_no_arg() {
+        use std::os::unix::prelude::OsStrExt;
+        let cmd = Command::new("any");
+        let a = None;
+        let value = OsStr::from_bytes(b"\xc3\x28");
+        let Err(e) = KvValueParser::default().parse_ref(&cmd, a, value) else {
+            panic!("Expected error on bad kv");
+        };
+        assert_eq!(ErrorKind::ValueValidation, e.kind());
+        let mut expect_ctx = HashSet::new();
+        expect_ctx.insert(ContextKind::Usage);
+        expect_ctx.insert(ContextKind::InvalidValue);
+        for (kind, _ctx) in e.context() {
+            assert!(expect_ctx.remove(&kind));
+        }
+        assert!(expect_ctx.is_empty());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn os_str_not_utf8_with_arg() {
+        use std::os::unix::prelude::OsStrExt;
+        let cmd = Command::new("any");
+        let a = Some(Arg::new("my_id"));
+        let value = OsStr::from_bytes(b"\xc3\x28");
+        let Err(e) = KvValueParser::default().parse_ref(&cmd, a.as_ref(), value) else {
+            panic!("Expected error on bad kv");
+        };
+        assert_eq!(ErrorKind::ValueValidation, e.kind());
+        let mut expect_ctx = HashSet::new();
+        expect_ctx.insert(ContextKind::Usage);
+        expect_ctx.insert(ContextKind::InvalidValue);
+        expect_ctx.insert(ContextKind::InvalidArg);
+        for (kind, _ctx) in e.context() {
+            assert!(expect_ctx.remove(&kind));
+        }
+        assert!(expect_ctx.is_empty());
+    }
+}

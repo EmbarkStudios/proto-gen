@@ -8,7 +8,7 @@ mod kv;
 use kv::KvValueParser;
 
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Args;
 use clap::Parser;
@@ -30,7 +30,7 @@ struct Opts {
     routine: Routine,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 struct TonicOpts {
     /// Whether to build server code
     #[clap(short = 's', long)]
@@ -73,7 +73,7 @@ enum Routine {
     },
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 struct WorkspaceOpts {
     /// Directories containing proto files to source (Ex. Dependencies),
     /// needs to include any directory containing files to be included in generation.
@@ -97,6 +97,10 @@ struct WorkspaceOpts {
 
 fn main() -> Result<(), i32> {
     let opts: Opts = Opts::parse();
+    run_with_opts(opts)
+}
+
+fn run_with_opts(opts: Opts) -> Result<(), i32> {
     let mut bldr = tonic_build::configure()
         .build_client(opts.tonic_opts.build_client)
         .build_server(opts.tonic_opts.build_server)
@@ -157,4 +161,218 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
             format,
         )
     }
+}
+
+#[cfg(test)]
+#[cfg(feature = "protoc-tests")]
+mod tests {
+    use std::io::ErrorKind;
+    use super::*;
+    use tempfile::TempDir;
+
+    struct SimpleTestCfg {
+        _keep_alive_project_base: TempDir,
+        tonic_opts: TonicOpts,
+        workspace: WorkspaceOpts,
+    }
+
+    fn create_simple_test_cfg(tmp_dir: Option<PathBuf>) -> SimpleTestCfg {
+        let project_base = tempfile::tempdir().unwrap();
+        let src = project_base.path().join("src");
+        let proto_files_dir = project_base.path().join("proto");
+        let my_proto = proto_files_dir.join("my-proto.proto");
+        let ex_proto_content = r#"syntax = "proto3";
+
+package my_proto;
+
+message MyNestedMessage {
+  int32 some_field = 1;
+}
+
+// My comment
+message TestMessage {
+  // My field comment!
+  int32 field_one = 1;
+  string field_two = 2;
+  MyNestedMessage my_very_long_field_hopefully_we_can_get_a_format_trigger_off_this_bad_boi = 3;
+}"#;
+        std::fs::create_dir_all(&proto_files_dir).unwrap();
+        std::fs::write(&my_proto, ex_proto_content).unwrap();
+        let proto_types_dir = src.join("proto_types");
+        let tonic_opts = TonicOpts {
+            build_server: false,
+            build_client: false,
+            generate_transport: false,
+            type_attributes: vec![],
+            client_attributes: vec![],
+            server_attributes: vec![],
+        };
+        let workspace = WorkspaceOpts {
+            proto_dirs: vec![proto_files_dir],
+            proto_files: vec![my_proto],
+            tmp_dir,
+            output_dir: proto_types_dir.clone(),
+        };
+        SimpleTestCfg {
+            _keep_alive_project_base: project_base,
+            tonic_opts,
+            workspace,
+        }
+    }
+
+    #[test]
+    fn full_generate_single_file_project() {
+        let test_cfg = create_simple_test_cfg(None);
+        let opts = Opts {
+            tonic_opts: test_cfg.tonic_opts.clone(),
+            format: true,
+            routine: Routine::Generate {
+                workspace: test_cfg.workspace.clone(),
+            },
+        };
+        // Generate
+        run_with_opts(opts).unwrap();
+        let opts = Opts {
+            tonic_opts: test_cfg.tonic_opts.clone(),
+            format: true,
+            routine: Routine::Validate {
+                workspace: test_cfg.workspace.clone(),
+            },
+        };
+        // Validate it's the same after generation
+        run_with_opts(opts).unwrap();
+        let opts = Opts {
+            tonic_opts: test_cfg.tonic_opts.clone(),
+            format: false,
+            routine: Routine::Validate {
+                workspace: test_cfg.workspace.clone(),
+            },
+        };
+        // Validate it's not the same if specifying no fmt
+        match run_with_opts(opts) {
+            Ok(_) => panic!("Expected fail on diff"),
+            Err(code) => {
+                assert_eq!(1, code);
+            }
+        }
+    }
+
+    #[test]
+    fn full_generate_single_file_project_does_not_remove_explicit_temp() {
+        let my_output_tmp = tempfile::tempdir().unwrap();
+        let test_cfg = create_simple_test_cfg(Some(my_output_tmp.path().to_path_buf()));
+        let opts = Opts {
+            tonic_opts: test_cfg.tonic_opts.clone(),
+            format: false,
+            routine: Routine::Generate {
+                workspace: test_cfg.workspace.clone(),
+            },
+        };
+        // Generate
+        run_with_opts(opts).unwrap();
+        if let Err(e) = std::fs::metadata(my_output_tmp.path()) {
+            if e.kind() == ErrorKind::NotFound {
+                eprintln!("Dir deleted!");
+            }
+        }
+        if let Err(e) = std::fs::metadata(my_output_tmp.path().join("my-proto.rs")) {
+            if e.kind() == ErrorKind::NotFound {
+                eprintln!("File not found!");
+            }
+        }
+        assert_exists_not_empty(&my_output_tmp.path().join("my_proto.rs"));
+    }
+
+    #[test]
+    fn full_generate_nested_project() {
+        let project_base = tempfile::tempdir().unwrap();
+        let src = project_base.path().join("src");
+        let proto_files_dir = project_base.path().join("proto");
+        let my_proto = proto_files_dir.join("my-proto.proto");
+        let ex_proto_content = r#"syntax = "proto3";
+
+package my_proto;
+
+import "imports/dependency.proto";
+import "imports/nested/nested_one.proto";
+
+message MyNestedMessage {
+  int32 some_field = 1;
+  imports.dependency.Dependency dependency = 2;
+  imports.nested.NestedOne nested_one = 3;
+}
+
+// My comment
+message TestMessage {
+  // My field comment!
+  int32 field_one = 1;
+  string field_two = 2;
+  MyNestedMessage my_very_long_field_hopefully_we_can_get_a_format_trigger_off_this_bad_boi = 3;
+}"#;
+        std::fs::create_dir_all(&proto_files_dir).unwrap();
+        std::fs::write(&my_proto, ex_proto_content).unwrap();
+        let dep_dir = proto_files_dir.join("imports");
+        std::fs::create_dir_all(&dep_dir).unwrap();
+        let first_dep_proto = r#"syntax = "proto3";
+package imports.dependency;
+
+import "imports/nested/nested_transitive.proto";
+
+message Dependency {
+  int64 my_dep_field = 1;
+  imports.nested.NestedTransitiveMsg ntm = 2;
+}
+"#;
+        std::fs::write(dep_dir.join("dependency.proto"), first_dep_proto).unwrap();
+        let nested_dep_proto_dir = dep_dir.join("nested");
+        let nested_first = r#"syntax = "proto3";
+package imports.nested;
+
+message NestedOne {
+  int32 my_field_of_first_nested = 1;
+}
+"#;
+        std::fs::create_dir_all(&nested_dep_proto_dir).unwrap();
+        std::fs::write(nested_dep_proto_dir.join("nested_one.proto"), nested_first).unwrap();
+        let nested_trns = r#"syntax = "proto3";
+package imports.nested;
+
+message NestedTransitiveMsg {
+  int32 my_transitive_nested_field = 1;
+}
+"#;
+        std::fs::write(nested_dep_proto_dir.join("nested_transitive.proto"), nested_trns).unwrap();
+        let proto_types_dir = src.join("proto_types");
+        let tonic_opts = TonicOpts {
+            build_server: false,
+            build_client: false,
+            generate_transport: false,
+            type_attributes: vec![],
+            client_attributes: vec![],
+            server_attributes: vec![],
+        };
+        let workspace = WorkspaceOpts {
+            proto_dirs: vec![proto_files_dir, dep_dir, nested_dep_proto_dir],
+            proto_files: vec![my_proto],
+            tmp_dir: None,
+            output_dir: proto_types_dir.clone(),
+        };
+        let opts = Opts {
+            tonic_opts,
+            format: false,
+            routine: Routine::Generate { workspace },
+        };
+        run_with_opts(opts).unwrap();
+        assert_exists_not_empty(&proto_types_dir.join("my_proto.rs"));
+        assert_exists_not_empty(&proto_types_dir.join("imports.rs"));
+        assert_exists_not_empty(&proto_types_dir.join("imports").join("dependency.rs"));
+        assert_exists_not_empty(&proto_types_dir.join("imports").join("nested.rs"));
+    }
+}
+
+fn assert_exists_not_empty(path: &Path) {
+    let content = std::fs::read(path)
+        .map_err(|e| format!("Failed to read {path:?}: {e}"))
+        .unwrap();
+    assert!(!content.is_empty(), "Empty file at {path:?}");
 }

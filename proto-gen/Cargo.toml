@@ -11,3 +11,7 @@ publish = true
 clap = { workspace = true, features = ["derive"] }
 tempfile = { workspace = true }
 tonic-build = { workspace = true, default-features = false, features = ["transport", "prost"] }
+
+[features]
+default = []
+protoc-tests = []
