@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
+          targets: "x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl"
           components: "clippy, rustfmt"
       - uses: Swatinem/rust-cache@v2
 
@@ -55,7 +56,7 @@ jobs:
       - name: Install protoc
         run: |
           curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v22.2/protoc-22.2-linux-x86_64.zip"
-          mkdir ~/.local
+          mkdir -p ~/.local
           unzip protoc-22.2-linux-x86_64.zip -d ~/.local
           export PATH="PATH:$HOME/.local/bin"
       - uses: baptiste0928/cargo-install@v2
@@ -74,7 +75,7 @@ jobs:
         run: |
           PB_REL="https://github.com/protocolbuffers/protobuf/releases"
           curl -LO $PB_REL/download/v22.2/protoc-22.2-linux-x86_64.zip
-          mkdir ~/.local
+          mkdir -p ~/.local
           unzip protoc-22.2-linux-x86_64.zip -d ~/.local
           export PATH="PATH:$HOME/.local/bin"
       - uses: baptiste0928/cargo-install@v2
@@ -96,7 +97,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test, deny-check]
+    needs: [test-local, deny-check, protoc-tests, coverage-check]
     if: startsWith(github.ref, 'refs/tags/')
     strategy:
       matrix:
@@ -148,7 +149,7 @@ jobs:
           tag=$(git describe --tags --abbrev=0)
           release_name="$name-$tag-${{ matrix.target }}"
           release_tar="${release_name}.tar.gz"
-          mkdir "$release_name"
+          mkdir -p "$release_name"
 
           if [ "${{ matrix.target }}" != "x86_64-pc-windows-msvc" ]; then
               strip "target/${{ matrix.target }}/release/${{ matrix.bin }}"
