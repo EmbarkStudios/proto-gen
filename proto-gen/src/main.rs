@@ -1,6 +1,5 @@
 //! A Runner that extends proto-gen with a cli for code generation without direct build dependencies
 #![warn(clippy::pedantic)]
-#![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
 mod gen;
 mod kv;
@@ -8,7 +7,7 @@ mod kv;
 use kv::KvValueParser;
 
 use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::Args;
 use clap::Parser;
@@ -163,11 +162,10 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
     }
 }
 
-#[cfg(test)]
-#[cfg(feature = "protoc-tests")]
+#[cfg(all(test, feature = "protoc-tests"))]
 mod tests {
-    use std::io::ErrorKind;
     use super::*;
+    use std::io::ErrorKind;
     use tempfile::TempDir;
 
     struct SimpleTestCfg {
@@ -341,7 +339,11 @@ message NestedTransitiveMsg {
   int32 my_transitive_nested_field = 1;
 }
 "#;
-        std::fs::write(nested_dep_proto_dir.join("nested_transitive.proto"), nested_trns).unwrap();
+        std::fs::write(
+            nested_dep_proto_dir.join("nested_transitive.proto"),
+            nested_trns,
+        )
+        .unwrap();
         let proto_types_dir = src.join("proto_types");
         let tonic_opts = TonicOpts {
             build_server: false,
@@ -368,11 +370,10 @@ message NestedTransitiveMsg {
         assert_exists_not_empty(&proto_types_dir.join("imports").join("dependency.rs"));
         assert_exists_not_empty(&proto_types_dir.join("imports").join("nested.rs"));
     }
-}
-
-fn assert_exists_not_empty(path: &Path) {
-    let content = std::fs::read(path)
-        .map_err(|e| format!("Failed to read {path:?}: {e}"))
-        .unwrap();
-    assert!(!content.is_empty(), "Empty file at {path:?}");
+    fn assert_exists_not_empty(path: &Path) {
+        let content = std::fs::read(path)
+            .map_err(|e| format!("Failed to read {path:?}: {e}"))
+            .unwrap();
+        assert!(!content.is_empty(), "Empty file at {path:?}");
+    }
 }

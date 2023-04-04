@@ -450,9 +450,8 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
         if out_str.starts_with(root) {
             found_root = true;
             break;
-        } else {
-            backwards_components.push(component);
         }
+        backwards_components.push(component);
     }
     if !found_root {
         return Err(format!(

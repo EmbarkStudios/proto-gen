@@ -62,12 +62,12 @@ impl TypedValueParser for KvValueParser {
 
 #[cfg(test)]
 mod tests {
+    use crate::kv::KvValueParser;
+    use clap::builder::TypedValueParser;
+    use clap::error::{ContextKind, ErrorKind};
+    use clap::{Arg, Command};
     use std::collections::HashSet;
     use std::ffi::OsStr;
-    use clap::builder::TypedValueParser;
-    use clap::{Arg, Command};
-    use clap::error::{ContextKind, ErrorKind};
-    use crate::kv::KvValueParser;
 
     #[test]
     fn happy_case_kv() {
