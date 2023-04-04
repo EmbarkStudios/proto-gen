@@ -511,7 +511,7 @@ mod tests {
         let this_file = Path::new("src/gen.rs");
         let abs = this_file.canonicalize().unwrap();
         let root = "proto-gen";
-        let found = path_from_starts_with(root, &abs).unwrap();
+        let found = path_from_starts_with(root, abs).unwrap();
         assert_eq!(this_file.to_path_buf(), found);
     }
 
@@ -520,14 +520,14 @@ mod tests {
         let this_file = Path::new("src/gen.rs");
         let abs = this_file.canonicalize().unwrap();
         let root = "not-found-af38cd-9fxzz7p-- ";
-        assert!(path_from_starts_with(root, &abs).is_err());
+        assert!(path_from_starts_with(root, abs).is_err());
     }
 
     #[test]
     fn can_diff_both_empty() {
         let empty_temp1 = tempfile::tempdir().unwrap();
         let empty_temp2 = tempfile::tempdir().unwrap();
-        let diff = run_diff(&empty_temp1.path(), &empty_temp2.path(), "my-mod").unwrap();
+        let diff = run_diff(empty_temp1.path(), empty_temp2.path(), "my-mod").unwrap();
         // One diff, would write a module file
         assert_eq!(1, diff);
     }
@@ -540,7 +540,7 @@ mod tests {
         let orig = tempfile::tempdir().unwrap();
         let orig_mod_dir = orig.path().join(proto_mod);
         std::fs::create_dir(&orig_mod_dir).unwrap();
-        std::fs::write(&orig_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        std::fs::write(orig_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
         std::fs::write(
             orig.path().join(format!("{proto_mod}.rs")),
             &expect_top_content,
@@ -554,7 +554,7 @@ mod tests {
             &expect_top_content,
         )
         .unwrap();
-        std::fs::write(&new_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        std::fs::write(new_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
         let diff = run_diff(&orig_mod_dir, &new_mod_dir, &expect_top_content).unwrap();
         assert_eq!(0, diff);
     }

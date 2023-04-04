@@ -94,6 +94,8 @@ deny = [
 skip = [
     # Syn 2.0 migration is going to take some time
     { name = "syn", version = "1.0.109" },
+    # Always windows-sys
+    { name = "windows-sys", version = "0.45.0" },
 ]
 
 skip-tree = []

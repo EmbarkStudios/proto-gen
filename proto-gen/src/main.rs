@@ -210,7 +210,7 @@ message TestMessage {
             proto_dirs: vec![proto_files_dir],
             proto_files: vec![my_proto],
             tmp_dir,
-            output_dir: proto_types_dir.clone(),
+            output_dir: proto_types_dir,
         };
         SimpleTestCfg {
             _keep_alive_project_base: project_base,
@@ -244,7 +244,7 @@ message TestMessage {
             tonic_opts: test_cfg.tonic_opts.clone(),
             format: false,
             routine: Routine::Validate {
-                workspace: test_cfg.workspace.clone(),
+                workspace: test_cfg.workspace,
             },
         };
         // Validate it's not the same if specifying no fmt
@@ -264,7 +264,7 @@ message TestMessage {
             tonic_opts: test_cfg.tonic_opts.clone(),
             format: false,
             routine: Routine::Generate {
-                workspace: test_cfg.workspace.clone(),
+                workspace: test_cfg.workspace,
             },
         };
         // Generate

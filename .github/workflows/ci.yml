@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: "x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl"
+          targets: "x86_64-unknown-linux-gnu"
           components: "clippy, rustfmt"
       - uses: Swatinem/rust-cache@v2
 
@@ -29,25 +29,44 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test-local:
-    name: Test local
+  test-t1:
+    name: Test Linux
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: ${{ matrix.os }}
+        target: [x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.target == 'x86_64-unknown-linux-musl'
         with:
-          targets: "x86_64-unknown-linux-musl,x86_64-unknown-linux-gnu"
+          targets: "x86_64-unknown-linux-musl"
       - uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-nextest
           locked: true
       - run: cargo fetch
       - name: cargo test build
-        run: cargo build --tests -r
+        run: cargo b --tests -r --target ${{ matrix.target }}
+      - name: cargo nextest
+        run: cargo nextest run -r -- target ${{ matrix.target }}
+
+  test-t2:
+    name: Test non-Linux
+    strategy:
+      matrix:
+        os: [windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: baptiste0928/cargo-install@v2
+        with:
+          crate: cargo-nextest
+          locked: true
+      - run: cargo fetch
+      - name: cargo test build
+        run: cargo b --tests -r
       - name: cargo nextest
         run: cargo nextest run -r
 
@@ -56,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install protoc
         run: |
           curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v22.2/protoc-22.2-linux-x86_64.zip"
@@ -71,9 +91,16 @@ jobs:
 
   protoc-tests:
     name: protoc-tests
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        with:
+          targets: "x86_64-unknown-linux-musl"
       - name: Install protoc
         run: |
           PB_REL="https://github.com/protocolbuffers/protobuf/releases"
@@ -87,9 +114,9 @@ jobs:
           locked: true
       - run: cargo fetch
       - name: cargo test build
-        run: cargo build --tests -r --features protoc-tests
+        run: cargo build --tests -r --features protoc-tests --target ${{ matrix.target }}
       - name: cargo nextest
-        run: cargo nextest run -r --features protoc-tests
+        run: cargo nextest run -r --features protoc-tests --target ${{ matrix.target }}
 
   deny-check:
     name: cargo-deny
@@ -100,7 +127,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test-local, deny-check, protoc-tests, coverage-check]
+    needs: [test-t1, test-t2, deny-check, protoc-tests, coverage-check]
     if: startsWith(github.ref, 'refs/tags/')
     strategy:
       matrix:
