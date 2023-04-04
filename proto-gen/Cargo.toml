@@ -1,12 +1,17 @@
 [package]
-name = "proto-gen"
-version = "0.1.0"
 authors = ["Embark <opensource@embark-studios.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
+categories = ["api-bindings", "command-line-utilities", "development-tools"]
 description = "Protobuf to Rust CLI tool"
+edition = "2021"
+homepage = "https://github.com/embarkstudios/proto-gen"
+keywords = ["codegen", "cli", "protobuf"]
+license = "MIT OR Apache-2.0"
+name = "proto-gen"
 publish = true
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+readme = "../README.md"
+repository = "https://github.com/embarkstudios/proto-gen"
+version = "0.1.0"
+workspace = ".."
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
