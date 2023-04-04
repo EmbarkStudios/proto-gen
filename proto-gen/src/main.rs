@@ -166,6 +166,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
 mod tests {
     use super::*;
     use std::io::ErrorKind;
+    use std::path::Path;
     use tempfile::TempDir;
 
     struct SimpleTestCfg {
