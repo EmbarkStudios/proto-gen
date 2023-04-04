@@ -12,7 +12,6 @@
 
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 [![Embark](https://img.shields.io/badge/discord-ark-%237289da.svg?logo=discord)](https://discord.gg/dAuKfZS)
-[![Git Docs](https://img.shields.io/badge/git%20main%20docs-published-blue)](https://embarkstudios.github.io/presser/presser/index.html)
 [![dependency status](https://deps.rs/repo/github/EmbarkStudios/proto-gen/status.svg)](https://deps.rs/repo/github/EmbarkStudios/proto-gen)
 [![Build status](https://github.com/EmbarkStudios/proto-gen/workflows/CI/badge.svg)](https://github.com/EmbarkStudios/proto-gen/actions)
 </div>
