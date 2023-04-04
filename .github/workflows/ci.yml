@@ -66,8 +66,6 @@ jobs:
         # Add fail CI to this step when public
       - name: Upload coverage
         uses: codecov/codecov-action@v3
-        with:
-          fail_ci_if_error: true
 
   full-tests:
     name: Full test Linux
