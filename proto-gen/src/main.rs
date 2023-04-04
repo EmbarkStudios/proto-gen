@@ -371,6 +371,7 @@ message NestedTransitiveMsg {
         assert_exists_not_empty(&proto_types_dir.join("imports").join("dependency.rs"));
         assert_exists_not_empty(&proto_types_dir.join("imports").join("nested.rs"));
     }
+
     fn assert_exists_not_empty(path: &Path) {
         let content = std::fs::read(path)
             .map_err(|e| format!("Failed to read {path:?}: {e}"))

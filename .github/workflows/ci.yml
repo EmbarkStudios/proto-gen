@@ -64,6 +64,7 @@ jobs:
           locked: true
       - name: Code coverage
         run: cargo tarpaulin --profile release --features protoc-tests
+        # Add fail CI to this step when public
       - name: Upload coverage
         uses: codecov/codecov-action@v3
 

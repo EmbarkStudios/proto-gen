@@ -22,7 +22,7 @@ pub fn run_generation(
     format: bool,
 ) -> Result<(), String> {
     let top_mod_content = generate_to_tmp(proto_ws, opts).map_err(|e| {
-        format!("Failed to generate prots into temp dir for proto workspace {proto_ws:?} {e}")
+        format!("Failed to generate protos into temp dir for proto workspace {proto_ws:?} {e}")
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
