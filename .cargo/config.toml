@@ -3,6 +3,3 @@ inherits = "release"
 lto = true
 strip = true
 codegen-units = 1
-
-[build]
-target = "x86_64-unknown-linux-musl"

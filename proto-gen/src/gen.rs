@@ -1,7 +1,8 @@
 //! A library that generates Rust code using tonic-build and places that code in a supplied directory
+#![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{Debug, Write};
 use std::fs;
@@ -10,14 +11,18 @@ use std::path::{Path, PathBuf};
 
 use tonic_build::Builder;
 
-pub fn run_proto_gen(
-    proto_ws: ProtoWorkspace,
+/// Generate protos for the provided proto workspace
+/// # Errors
+/// Miscellaneous errors accessing the filesystem (such as permissions),
+/// and errors coming from `protoc`
+pub fn run_generation(
+    proto_ws: &ProtoWorkspace,
     opts: Builder,
     commit: bool,
     format: bool,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(&proto_ws, opts).map_err(|e| {
-        format!("Failed to generate prots into temp dir for proto workspace {proto_ws:?} {e}")
+    let top_mod_content = generate_to_tmp(proto_ws, opts).map_err(|e| {
+        format!("Failed to generate protos into temp dir for proto workspace {proto_ws:?} {e}")
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
@@ -32,14 +37,11 @@ pub fn run_proto_gen(
             recurse_copy_clean(new, old)?;
             let out_top_name = as_file_name_string(old)?;
             let out_parent = old.parent().ok_or_else(|| {
-                format!(
-                    "Failed to find parent for output dir {:?} to place mod file",
-                    old
-                )
+                format!("Failed to find parent for output dir {old:?} to place mod file")
             })?;
             let mod_file = out_parent.join(format!("{out_top_name}.rs"));
             fs::write(&mod_file, top_mod_content.as_bytes())
-                .map_err(|e| format!("Failed to write parent module file to {:?} {e}", mod_file))?;
+                .map_err(|e| format!("Failed to write parent module file to {mod_file:?} {e}"))?;
         } else {
             return Err(format!("Found {diff} diffs at {:?}", proto_ws.output_dir));
         }
@@ -51,7 +53,7 @@ pub fn run_proto_gen(
 
 #[derive(Debug)]
 pub struct ProtoWorkspace {
-    pub proto_dir: PathBuf,
+    pub proto_dirs: Vec<PathBuf>,
     pub proto_files: Vec<PathBuf>,
     pub tmp_dir: PathBuf,
     pub output_dir: PathBuf,
@@ -59,7 +61,7 @@ pub struct ProtoWorkspace {
 
 #[inline]
 fn gen_proto(
-    src_dir: impl AsRef<Path> + Debug,
+    src_dirs: &[impl AsRef<Path> + Debug],
     src_files: &[impl AsRef<Path>],
     out_dir: impl AsRef<OsStr>,
     opts: Builder,
@@ -67,8 +69,8 @@ fn gen_proto(
     let old_out = std::env::var("OUT_DIR");
     std::env::set_var("OUT_DIR", out_dir);
     // Would by nice if we could just get a byte buffer instead of magic env write
-    opts.compile(src_files, &[&src_dir])
-        .map_err(|e| format!("Failed to compile protos from {src_dir:?} {e}"))?;
+    opts.compile(src_files, src_dirs)
+        .map_err(|e| format!("Failed to compile protos from {src_dirs:?} {e}"))?;
     // Restore the env, cause why not
     if let Ok(old) = old_out {
         std::env::set_var("OUT_DIR", old);
@@ -80,20 +82,20 @@ fn gen_proto(
 
 fn generate_to_tmp(workspace: &ProtoWorkspace, opts: Builder) -> Result<String, String> {
     gen_proto(
-        &workspace.proto_dir,
+        &workspace.proto_dirs,
         &workspace.proto_files,
         &workspace.tmp_dir,
         opts,
     )?;
-    clean_up_file_structure(workspace.tmp_dir.clone())
+    clean_up_file_structure(&workspace.tmp_dir)
 }
 
-fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
-    let rd = fs::read_dir(&out_dir)
+fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
+    let rd = fs::read_dir(out_dir)
         .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files {e}"))?;
     let mut out_modules = ModuleContainer::Parent {
         name: "dummy".to_string(),
-        location: out_dir.clone(),
+        location: out_dir.to_path_buf(),
         children: HashMap::new(),
     };
     for entry in rd {
@@ -107,18 +109,14 @@ fn clean_up_file_structure(out_dir: PathBuf) -> Result<String, String> {
         let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entity {file_path:?} in output dir {out_dir:?} when cleaning up files {e}"))?;
         if metadata.is_file() {
             // Tonic build 0.7 generates a bunch of empty files for some reason, fixed in 0.8
-            let content = fs::read(&file_path).map_err(|e| {
-                format!("Failed to read generated file at path {:?} {e}", file_path)
-            })?;
+            let content = fs::read(&file_path)
+                .map_err(|e| format!("Failed to read generated file at path {file_path:?} {e}"))?;
             if content.is_empty() {
                 fs::remove_file(&file_path).map_err(|e| {
-                    format!(
-                        "Failed to delete empty file {:?} from temp directory {e}",
-                        file_path
-                    )
+                    format!("Failed to delete empty file {file_path:?} from temp directory {e}")
                 })?;
             } else {
-                out_modules.push_file(&out_dir, &file_path)?;
+                out_modules.push_file(out_dir, &file_path)?;
             }
         }
     }
@@ -234,7 +232,7 @@ impl ModuleContainer {
                 }
                 let mod_file_location = location.join(format!("{name}.rs"));
                 fs::write(&mod_file_location, output.as_bytes()).map_err(|e| {
-                    format!("Failed to write module file at {:?} {e}", mod_file_location)
+                    format!("Failed to write module file at {mod_file_location:?} {e}")
                 })?;
                 Ok(())
             }
@@ -248,13 +246,10 @@ impl ModuleContainer {
                     return Ok(());
                 }
                 fs::copy(file, &file_location).map_err(|e| {
-                    format!(
-                        "Failed to copy module file from {:?} to {:?} {e}",
-                        file, file_location
-                    )
+                    format!("Failed to copy module file from {file:?} to {file_location:?} {e}")
                 })?;
                 fs::remove_file(file)
-                    .map_err(|e| format!("Failed to remove original file from {:?} {e}", file))?;
+                    .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
                 Ok(())
             }
         }
@@ -301,7 +296,7 @@ fn run_diff(
     let new_files = collect_files(&new, new_root_file)?;
     let mut diff = 0;
     for file in &new_files {
-        if vec_remove(file, &mut orig_files) {
+        if orig_files.remove(file) {
             let orig_path = orig.as_ref().join(file);
             let new_path = new.as_ref().join(file);
             let a = fs::read(&orig_path)
@@ -346,22 +341,11 @@ fn run_diff(
     Ok(diff)
 }
 
-#[inline]
-fn vec_remove(needle: &PathBuf, haystack: &mut Vec<PathBuf>) -> bool {
-    for i in 0..haystack.len() {
-        if needle == &haystack[i] {
-            haystack.swap_remove(i);
-            return true;
-        }
-    }
-    false
-}
-
-fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<PathBuf>, String> {
+fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<HashSet<PathBuf>, String> {
     let rd = fs::read_dir(&source);
     match rd {
         Ok(rd) => {
-            let mut all_files = Vec::new();
+            let mut all_files = HashSet::new();
             for entry in rd {
                 let entry = entry.map_err(|e| {
                     format!("Failed to read entry when checking for file diff at {source:?} {e}")
@@ -370,7 +354,7 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<Pat
                 let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entry {entry_path:?} when checking for file diff at {source:?} {e}"))?;
                 if metadata.is_file() {
                     let pb = path_from_starts_with(root, &entry_path)?;
-                    all_files.push(pb);
+                    all_files.insert(pb);
                 } else if metadata.is_dir() {
                     all_files.extend(collect_files(entry_path, root)?);
                 } else {
@@ -379,7 +363,7 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<Vec<Pat
             }
             Ok(all_files)
         }
-        Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
+        Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(HashSet::new()),
         Err(e) => Err(format!(
             "Got error reading dir {source:?} to check diff {e}"
         )),
@@ -420,7 +404,7 @@ fn recurse_copy_clean(
     Ok(())
 }
 
-fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Result<(), String> {
+fn recurse_copy_over(dest_top: &Path, entry: impl AsRef<Path> + Debug) -> Result<(), String> {
     let path = entry.as_ref();
     let metadata = path.metadata().map_err(|e| {
         format!("Failed to get metadata for {path:?} to copy to generated protos from {e}")
@@ -428,7 +412,7 @@ fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Re
     let last_component = path
         .file_name()
         .ok_or_else(|| format!("Failed to find file name in path {path:?}"))?;
-    let new_dir = transfer_top.join(last_component);
+    let new_dir = dest_top.join(last_component);
     if metadata.is_file() {
         fs::copy(path, &new_dir).map_err(|e| {
             format!("Failed to copy generated file from {path:?} to {new_dir:?} E: {e}")
@@ -455,8 +439,9 @@ fn recurse_copy_over(transfer_top: &Path, entry: impl AsRef<Path> + Debug) -> Re
 
 #[inline]
 fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<PathBuf, String> {
-    let mut components = path.as_ref().components();
+    let mut components = path.as_ref().components().rev();
     let mut found_root = false;
+    let mut backwards_components = vec![];
     for component in components.by_ref() {
         let out_str = component.as_os_str();
         let out_str = out_str
@@ -466,13 +451,15 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
             found_root = true;
             break;
         }
+        backwards_components.push(component);
     }
     if !found_root {
         return Err(format!(
-            "Failed to trim path up to {root} for proto generated file at {path:?}"
+            "Failed to trim path up to {root} for proto generated file at: {path:?}. Could not find {root}. "
         ));
     }
-    let pb = components.collect::<PathBuf>();
+    backwards_components.reverse();
+    let pb = backwards_components.into_iter().collect::<PathBuf>();
     Ok(pb)
 }
 
@@ -486,8 +473,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
             .metadata()
             .map_err(|e| format!("Failed to read metadata for entry {entry:?} {e}"))?;
         let path = entry.path();
-        let file_name = as_file_name_string(&path)?;
-        if metadata.is_file() && file_name.ends_with(".rs") {
+        if metadata.is_file() && has_ext(&path, "rs") {
             let out = std::process::Command::new("rustfmt")
                 .arg(path)
                 .arg("--edition")
@@ -506,4 +492,70 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+#[inline]
+#[must_use]
+pub fn has_ext(path: &Path, ext: &str) -> bool {
+    path.extension()
+        .map_or(false, |p| p.eq_ignore_ascii_case(ext))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::gen::{path_from_starts_with, run_diff};
+    use std::path::Path;
+
+    #[test]
+    fn can_find_path_from_some_root_exists() {
+        let this_file = Path::new("src/gen.rs");
+        let abs = this_file.canonicalize().unwrap();
+        let root = "proto-gen";
+        let found = path_from_starts_with(root, abs).unwrap();
+        assert_eq!(this_file.to_path_buf(), found);
+    }
+
+    #[test]
+    fn can_find_path_from_some_root_missing() {
+        let this_file = Path::new("src/gen.rs");
+        let abs = this_file.canonicalize().unwrap();
+        let root = "not-found-af38cd-9fxzz7p-- ";
+        assert!(path_from_starts_with(root, abs).is_err());
+    }
+
+    #[test]
+    fn can_diff_both_empty() {
+        let empty_temp1 = tempfile::tempdir().unwrap();
+        let empty_temp2 = tempfile::tempdir().unwrap();
+        let diff = run_diff(empty_temp1.path(), empty_temp2.path(), "my-mod").unwrap();
+        // One diff, would write a module file
+        assert_eq!(1, diff);
+    }
+
+    #[test]
+    fn can_diff_identical() {
+        let proto_mod = "proto_types";
+        let my_mod = "my_mod";
+        let expect_top_content = format!("pub mod {my_mod};\n");
+        let orig = tempfile::tempdir().unwrap();
+        let orig_mod_dir = orig.path().join(proto_mod);
+        std::fs::create_dir(&orig_mod_dir).unwrap();
+        std::fs::write(orig_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        std::fs::write(
+            orig.path().join(format!("{proto_mod}.rs")),
+            &expect_top_content,
+        )
+        .unwrap();
+        let new = tempfile::tempdir().unwrap();
+        let new_mod_dir = new.path().join(proto_mod);
+        std::fs::create_dir(&new_mod_dir).unwrap();
+        std::fs::write(
+            new.path().join(format!("{proto_mod}.rs")),
+            &expect_top_content,
+        )
+        .unwrap();
+        std::fs::write(new_mod_dir.join("my_mod.rs"), "!// Content").unwrap();
+        let diff = run_diff(&orig_mod_dir, &new_mod_dir, &expect_top_content).unwrap();
+        assert_eq!(0, diff);
+    }
 }

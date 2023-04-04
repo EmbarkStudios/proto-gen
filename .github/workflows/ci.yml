@@ -1,12 +1,11 @@
-# TODO: Replace this line with the commented ones to actually run the action in your repo(s)
-on: public
-# on:
-#   push:
-#     branches:
-#       - main
-#     tags:
-#       - "*"
-#   pull_request:
+on:
+  push:
+    branches:
+      - main
+      - mg/cleanup
+    tags:
+      - "*"
+  pull_request:
 
 name: CI
 jobs:
@@ -15,49 +14,168 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-
-      # make sure all code has been formatted with rustfmt
-      - name: check rustfmt
-        run: |
-          rustup component add rustfmt
-          cargo fmt -- --check --color always
-
+          components: "clippy, rustfmt"
+      - uses: Swatinem/rust-cache@v2
+      # make sure all code has been formatted with rustfmt and linted with clippy
+      - name: Check formatting
+        run: cargo fmt -- --check --color always
       # run clippy to verify we have no warnings
       - run: cargo fetch
-      - name: cargo clippy
-        run: |
-          rustup component add clippy
-          cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test
+  # Some platforms are hostile to automation and are therefore tested without protoc
+  test-t2:
+    name: Test non-Linux
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: baptiste0928/cargo-install@v2
         with:
-          toolchain: stable
-          override: true
+          crate: cargo-nextest
+          locked: true
       - run: cargo fetch
-      - name: cargo test build
-        # Note the use of release here means longer compile time, but much
-        # faster test execution time. If you don't have any heavy tests it
-        # might be faster to take off release and just compile in debug
-        run: cargo build --tests --release
-      - name: cargo test
-        run: cargo test --release
+      - name: Build tests
+        run: cargo b --tests -r
+      - name: Run tests
+        run: cargo nextest run -r
 
-  # TODO: Remove this check if you don't use cargo-deny in the repo
+  coverage-check:
+    name: Check coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install protoc
+        run: |
+          curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v22.2/protoc-22.2-linux-x86_64.zip"
+          mkdir -p ~/.local
+          unzip protoc-22.2-linux-x86_64.zip -d ~/.local
+          export PATH="PATH:$HOME/.local/bin"
+      - uses: baptiste0928/cargo-install@v2
+        with:
+          crate: cargo-tarpaulin
+          locked: true
+      - name: Code coverage
+        run: cargo tarpaulin --profile release --features protoc-tests
+        # Add fail CI to this step when public
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+
+  full-tests:
+    name: Full test Linux
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        with:
+          targets: "x86_64-unknown-linux-musl"
+      - name: Install protoc
+        run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v22.2/protoc-22.2-linux-x86_64.zip
+          mkdir -p ~/.local
+          unzip protoc-22.2-linux-x86_64.zip -d ~/.local
+          export PATH="PATH:$HOME/.local/bin"
+      - uses: baptiste0928/cargo-install@v2
+        with:
+          crate: cargo-nextest
+          locked: true
+      - run: cargo fetch
+      - name: Build tests
+        run: cargo build --tests -r --features protoc-tests --target ${{ matrix.target }}
+      - name: Run tests
+        run: cargo nextest run -r --features protoc-tests --target ${{ matrix.target }}
+
   deny-check:
-    name: cargo-deny
+    name: Deny check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: EmbarkStudios/cargo-deny-action@v1
+
+  publish-check:
+    name: Publish check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fetch
+      - name: Dry run publish
+        run: cargo publish --dry-run -p proto-gen
+
+  release:
+    name: Release
+    needs: [full-tests, test-t2, deny-check, coverage-check]
+    if: startsWith(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            bin: proto-gen
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: proto-gen.exe
+          - os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: proto-gen
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl tools
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y musl-tools
+      - run: cargo fetch --target ${{ matrix.target }}
+      - name: Release build
+        shell: bash
+        run: |
+          cargo b --profile lto --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          name=proto-gen
+          tag=$(git describe --tags --abbrev=0)
+          release_name="$name-$tag-${{ matrix.target }}"
+          release_tar="${release_name}.tar.gz"
+          mkdir -p "$release_name"
+
+          if [ "${{ matrix.target }}" != "x86_64-pc-windows-msvc" ]; then
+              strip "target/${{ matrix.target }}/lto/${{ matrix.bin }}"
+          fi
+
+          cp "target/${{ matrix.target }}/lto/${{ matrix.bin }}" "$release_name/"
+          cp README.md LICENSE-APACHE LICENSE-MIT "$release_name/"
+          tar czvf "$release_tar" "$release_name"
+
+          rm -r "$release_name"
+
+          # Windows environments in github actions don't have the gnu coreutils installed,
+          # which includes the shasum exe, so we just use powershell instead
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            echo "(Get-FileHash \"${release_tar}\" -Algorithm SHA256).Hash | Out-File -Encoding ASCII -NoNewline \"${release_tar}.sha256\"" | pwsh -c -
+          else
+            echo -n "$(shasum -ba 256 "${release_tar}" | cut -d " " -f 1)" > "${release_tar}.sha256"
+          fi
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: "proto-gen*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,7 @@
-/target
 **/*.rs.bk
 # We wan't the lock file for this binary repo
 # Cargo.lock
 .idea
 *.iml
+examples/example-project/Cargo.lock
+**/target

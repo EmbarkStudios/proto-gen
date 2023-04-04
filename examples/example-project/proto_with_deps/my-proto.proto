@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package my_protos;
+
+import "important/important.proto";
+
+message TestMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+  dep_protos.important.MyImportantMessage important_message = 3;
+}

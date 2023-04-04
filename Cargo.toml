@@ -1,2 +1,9 @@
 [workspace]
-members = ["proto-gen", "proto-gen-cli"]
+members = ["proto-gen"]
+exclude = ["examples/example-project"]
+
+[workspace.dependencies]
+clap = { version = "4.1.13", features = ["derive"] }
+proto-gen = { path = "../proto-gen" }
+tempfile = "3.4.0"
+tonic-build = { version = "0.8.4", default-features = false, features = ["transport", "prost"] }

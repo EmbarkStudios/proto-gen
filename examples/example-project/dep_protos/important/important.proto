@@ -1,0 +1,7 @@
+syntax = "proto3";
+package dep_protos.important;
+
+message MyImportantMessage {
+  // Always true
+  bool is_important = 1;
+}
