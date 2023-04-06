@@ -170,10 +170,8 @@ impl Module {
         if let Some((cur, rest)) = raw_name.split_once('.') {
             let new_parent = parent.join(cur);
             if let Some(child) = self.children.get(cur) {
-                println!("Push existing {cur} {rest} {parent:?} {new_parent:?}");
                 child.borrow_mut().push_recurse(&new_parent, path, rest)?;
             } else {
-                println!("Push new {cur} {rest}");
                 let md = Rc::new(RefCell::new(Module {
                     name: cur.to_string(),
                     location: parent.to_path_buf(),
