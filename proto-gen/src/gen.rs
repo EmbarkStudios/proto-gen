@@ -235,7 +235,8 @@ impl Module {
                     .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
                 module_header.push('\n');
                 module_header.push_str(&file_content);
-                fs::write(&file_location, module_header.as_bytes()).map_err(|e| {
+                let clean = hide_doctests(&module_header);
+                fs::write(&file_location, clean.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} {e}")
                 })?;
                 // Don't remove if same file
@@ -245,8 +246,11 @@ impl Module {
                 }
                 // Don't try to copy into self, will get empty file
             } else if !is_same_file {
-                fs::copy(file, &file_location).map_err(|e| {
-                    format!("Failed to copy module file from {file:?} to {file_location:?} {e}")
+                let file_content = fs::read_to_string(file)
+                    .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
+                let clean_content = hide_doctests(&file_content);
+                fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
+                    format!("Failed to write file contents to {file_location:?} {e}")
                 })?;
                 fs::remove_file(file)
                     .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
@@ -478,7 +482,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         let path = entry.path();
         if metadata.is_file() && has_ext(&path, "rs") {
             let out = std::process::Command::new("rustfmt")
-                .arg(path)
+                .arg(&path)
                 .arg("--edition")
                 .arg("2021")
                 .output()
@@ -495,6 +499,36 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Rustdoc assumes all comments with 4 or more spaces or three backticks are things it absolutely
+/// should try to compile and run, which seems like an insane assumption, we try our best
+/// to strip those symbols here.
+fn hide_doctests(content: &str) -> String {
+    let mut in_potentially_hostile_code = false;
+    let mut new_content = String::with_capacity(content.len());
+    for line in content.lines() {
+        if let Some((_com, rest)) = line.split_once("///") {
+            if rest.len() >= 4 && rest.chars().take(4).all(char::is_whitespace) {
+                // If 4 or more spaces after comment Rustdoc will think its code it should compile
+                if !in_potentially_hostile_code {
+                    // If first time, insert ```ignore
+                    in_potentially_hostile_code = true;
+                    new_content.push_str("///```ignore\n");
+                }
+            } else if in_potentially_hostile_code {
+                // If not 4 whitespaces anymore, insert ignore end token
+                new_content.push_str("///```\n");
+                in_potentially_hostile_code = false;
+            }
+            // If no longer in comments, comment ended on 4+ whitespaces, insert another
+        } else if in_potentially_hostile_code {
+            new_content.push_str("///```\n");
+            in_potentially_hostile_code = false;
+        }
+        let _ = new_content.write_fmt(format_args!("{line}\n"));
+    }
+    new_content
 }
 
 #[inline]

@@ -1,6 +1,10 @@
 pub mod sublevel;
 pub mod topsub;
 
+/// Heres is a comment!
+///```ignore
+///     Here is a doc comment that should get wrapped in ignore
+///```
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TestMessage {
