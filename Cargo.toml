@@ -6,4 +6,4 @@ exclude = ["examples/example-project"]
 clap = { version = "4.1.13", features = ["derive"] }
 proto-gen = { path = "../proto-gen" }
 tempfile = "3.4.0"
-tonic-build = { version = "0.8.4", default-features = false, features = ["transport", "prost"] }
+tonic-build = { version = "0.9.1", default-features = false, features = ["transport", "prost"] }
