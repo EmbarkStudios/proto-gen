@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed 
+- Tonic build upgraded to 0.9.1
 
 ## [0.1.1] - 2023-04-04
 ### Added
