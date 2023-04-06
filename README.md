@@ -74,13 +74,13 @@ Generate types from a `.proto` into an project.
 
 #### Example in this project
 ```bash
-cargo r -r -p proto-gen-cli -- generate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen -- generate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
 ```
 This will generate Rust code from the proto specified in `examples/example-project/proto/my-proto.proto` and place it 
 in `examples/example-project/src/proto_types`.  
 
 ```bash
-cargo r -r -p proto-gen-cli -- validate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen -- validate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
 ```
 This will also generate Rust code (to a temporary directory) and the run a diff against the code contained in `examples/example-project/src/proto_types`. 
 If it finds any diffs it will exit with error code 1 and a message.
@@ -88,11 +88,11 @@ If it finds any diffs it will exit with error code 1 and a message.
 If we want to use includes, the directory to include needs to be specified.  
 
 ```bash 
-cargo r -r -p proto-gen-cli -- generate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen -- generate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
 ```
 Here we're passing -d twice, once to include the dependency protos, and one to include the protos we want to generate.  
 ```bash 
-cargo r -r -p proto-gen-cli -- validate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
+cargo r -r -p proto-gen -- validate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
 ```
 
 ## Contributing
