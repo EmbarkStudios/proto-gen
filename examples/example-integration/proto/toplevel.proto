@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "my-top-include.proto";
+import "other-sub/other-sub-include.proto";
+
+package toplevel;
+
+// Heres is a comment!
+//    Here is a doc comment that should get wrapped in ignore
+message TestMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+  include.IncludeMessage cross_package_include = 3;
+  include.othersub.NestIncludeMessage direct_subdependency_import = 4;
+}

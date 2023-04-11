@@ -11,7 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - ReleaseDate
 ### Changed 
 - Tonic build upgraded to 0.9.1
-
+### Fixed
+- A bug where when multiple protos were part of the same chain 
+of packages they would not be put properly into modules, see https://github.com/EmbarkStudios/proto-gen/issues/10
+### Fixed
+- Escape most doc-tests that tonic generates as that is probably not valid Rust code
+and will lead to failed cargo test, and if it is rust code, we definitely don't want to run it. 
 ## [0.1.1] - 2023-04-04
 ### Added
 - Correct cargo metadata

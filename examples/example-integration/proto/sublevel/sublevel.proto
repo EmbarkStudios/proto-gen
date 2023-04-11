@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package toplevel.sublevel;
+
+message SublevelMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+
+}

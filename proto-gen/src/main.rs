@@ -165,7 +165,6 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
 #[cfg(all(test, feature = "protoc-tests"))]
 mod tests {
     use super::*;
-    use std::io::ErrorKind;
     use std::path::Path;
     use tempfile::TempDir;
 
@@ -269,16 +268,6 @@ message TestMessage {
         };
         // Generate
         run_with_opts(opts).unwrap();
-        if let Err(e) = std::fs::metadata(my_output_tmp.path()) {
-            if e.kind() == ErrorKind::NotFound {
-                eprintln!("Dir deleted!");
-            }
-        }
-        if let Err(e) = std::fs::metadata(my_output_tmp.path().join("my-proto.rs")) {
-            if e.kind() == ErrorKind::NotFound {
-                eprintln!("File not found!");
-            }
-        }
         assert_exists_not_empty(&my_output_tmp.path().join("my_proto.rs"));
     }
 

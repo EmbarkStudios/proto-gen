@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "other-sub/other-sub-include.proto";
+
+package include.sub;
+
+message IncludeSubMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+  include.othersub.NestIncludeMessage nest_include = 3;
+}

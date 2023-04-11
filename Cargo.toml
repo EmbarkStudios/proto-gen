@@ -1,6 +1,6 @@
 [workspace]
 members = ["proto-gen"]
-exclude = ["examples/example-project"]
+exclude = ["examples/example-project", "examples/example-integration"]
 
 [workspace.dependencies]
 clap = { version = "4.1.13", features = ["derive"] }

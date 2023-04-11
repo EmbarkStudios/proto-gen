@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package include.othersub;
+
+message NestIncludeMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+}

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "sub/sub.proto";
+package include;
+
+message IncludeMessage {
+  int32 field_one = 1;
+  string field_two = 2;
+  include.sub.IncludeSubMessage include_sub = 3;
+}

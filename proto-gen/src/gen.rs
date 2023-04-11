@@ -2,12 +2,14 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{Debug, Write};
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use tonic_build::Builder;
 
@@ -93,10 +95,11 @@ fn generate_to_tmp(workspace: &ProtoWorkspace, opts: Builder) -> Result<String, 
 fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
     let rd = fs::read_dir(out_dir)
         .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files {e}"))?;
-    let mut out_modules = ModuleContainer::Parent {
+    let mut out_modules = Module {
         name: "dummy".to_string(),
         location: out_dir.to_path_buf(),
         children: HashMap::new(),
+        file: None,
     };
     for entry in rd {
         let entry = entry.map_err(|e| {
@@ -120,35 +123,29 @@ fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
             }
         }
     }
-    let ModuleContainer::Parent { children, .. } = out_modules else {
-        return Err("Top level module container is not a parent".to_string());
-    };
-    let mut sortable_children = children.into_values().collect::<Vec<ModuleContainer>>();
+    let mut sortable_children = out_modules
+        .children
+        .into_values()
+        .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
     let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
-    sortable_children.sort_by(|a, b| a.get_name().cmp(b.get_name()));
+    sortable_children.sort_by(|a, b| a.borrow().get_name().cmp(b.borrow().get_name()));
     for module in sortable_children {
-        module.dump_to_disk()?;
-        let _ = top_level_mod.write_fmt(format_args!("pub mod {};\n", module.get_name()));
+        module.borrow_mut().dump_to_disk()?;
+        let _ = top_level_mod.write_fmt(format_args!("pub mod {};\n", module.borrow().get_name()));
     }
     Ok(top_level_mod)
 }
 
 #[derive(Debug)]
-enum ModuleContainer {
-    Parent {
-        name: String,
-        location: PathBuf,
-        children: HashMap<String, ModuleContainer>,
-    },
-    Node {
-        name: String,
-        location: PathBuf,
-        file: PathBuf,
-    },
+struct Module {
+    name: String,
+    location: PathBuf,
+    children: HashMap<String, Rc<RefCell<Module>>>,
+    file: Option<PathBuf>,
 }
 
-impl ModuleContainer {
+impl Module {
     fn push_file(&mut self, top_level: &Path, path: &Path) -> Result<(), String> {
         let file_path = path;
         let file_name = file_path
@@ -171,96 +168,106 @@ impl ModuleContainer {
         raw_name: &str,
     ) -> Result<(), String> {
         if let Some((cur, rest)) = raw_name.split_once('.') {
-            match self {
-                ModuleContainer::Parent { children, .. } => {
-                    let new_parent = parent.join(cur);
-                    if let Some(child) = children.get_mut(cur) {
-                        child.push_recurse(&new_parent, path, rest)?;
-                    } else {
-                        let mut md = ModuleContainer::Parent {
-                            name: cur.to_string(),
-                            location: parent.to_path_buf(),
-                            children: HashMap::new(),
-                        };
-                        md.push_recurse(&new_parent, path, rest)?;
-                        children.insert(cur.to_string(), md);
-                    }
-                }
-                ModuleContainer::Node { .. } => {
-                    return Err(format!(
-                        "Tried to push a child on a node {:?}",
-                        path.as_ref()
-                    ));
-                }
+            let new_parent = parent.join(cur);
+            if let Some(child) = self.children.get(cur) {
+                child.borrow_mut().push_recurse(&new_parent, path, rest)?;
+            } else {
+                let md = Rc::new(RefCell::new(Module {
+                    name: cur.to_string(),
+                    location: parent.to_path_buf(),
+                    children: HashMap::new(),
+                    file: None,
+                }));
+                self.children.insert(cur.to_string(), md.clone());
+                md.borrow_mut().push_recurse(&new_parent, path, rest)?;
             }
+        } else if let Some(old) = self.children.get(raw_name) {
+            assert!(old.borrow().file.is_none(), "Logic error");
+            old.borrow_mut().file = Some(path.as_ref().to_path_buf());
         } else {
-            let ModuleContainer::Parent { children, .. } = self else {
-                return Err(format!("Raw name {raw_name} did not belong to a parent node"));
-            };
-            children.insert(
+            self.children.insert(
                 raw_name.to_string(),
-                ModuleContainer::Node {
+                Rc::new(RefCell::new(Module {
                     name: raw_name.to_string(),
                     location: parent.to_path_buf(),
-                    file: path.as_ref().to_path_buf(),
-                },
+
+                    children: HashMap::default(),
+                    file: Some(path.as_ref().to_path_buf()),
+                })),
             );
         }
         Ok(())
     }
 
     fn dump_to_disk(&self) -> Result<(), String> {
-        match self {
-            ModuleContainer::Parent {
-                name,
-                children,
-                location,
-            } => {
-                let dir = location.join(name);
-                fs::create_dir_all(&dir)
-                    .map_err(|e| format!("Failed to create module directory for {dir:?} {e}"))?;
-                let mut sortable_children = children.values().collect::<Vec<&ModuleContainer>>();
-                sortable_children.sort_by(|a, b| {
-                    let a_name = a.get_name();
-                    let b_name = b.get_name();
-                    a_name.cmp(b_name)
-                });
-                let mut output = String::new();
-                for sorted_child in sortable_children {
-                    let _ = output.write_fmt(format_args!("pub mod {};", sorted_child.get_name()));
-                    sorted_child.dump_to_disk()?;
-                }
-                let mod_file_location = location.join(format!("{name}.rs"));
-                fs::write(&mod_file_location, output.as_bytes()).map_err(|e| {
-                    format!("Failed to write module file at {mod_file_location:?} {e}")
-                })?;
-                Ok(())
+        let module_expose_output = if self.children.is_empty() {
+            None
+        } else {
+            let dir = self.location.join(&self.name);
+            fs::create_dir_all(&dir)
+                .map_err(|e| format!("Failed to create module directory for {dir:?} {e}"))?;
+            let mut sortable_children = self
+                .children
+                .values()
+                .collect::<Vec<&Rc<RefCell<Module>>>>();
+            sortable_children.sort_by(|a, b| {
+                let a_borrow = a.borrow();
+                let b_borrow = b.borrow();
+                a_borrow.get_name().cmp(b_borrow.get_name())
+            });
+            let mut output = String::new();
+            for sorted_child in sortable_children {
+                let _ = output.write_fmt(format_args!(
+                    "pub mod {};\n",
+                    sorted_child.borrow().get_name()
+                ));
+                sorted_child.borrow().dump_to_disk()?;
             }
-            ModuleContainer::Node {
-                name,
-                location,
-                file,
-            } => {
-                let file_location = location.join(format!("{name}.rs"));
-                if &file_location == file {
-                    return Ok(());
+            Some(output)
+        };
+        if let Some(file) = self.file.as_ref() {
+            let file_location = self.location.join(format!("{}.rs", self.name));
+            // It's the same filename we don't need to move it but we need to edit it if it has
+            // child modules.
+            let is_same_file = &file_location == file;
+            if let Some(mut module_header) = module_expose_output {
+                let file_content = fs::read_to_string(file)
+                    .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
+                module_header.push('\n');
+                module_header.push_str(&file_content);
+                let clean = hide_doctests(&module_header);
+                fs::write(&file_location, clean.as_bytes()).map_err(|e| {
+                    format!("Failed to write file contents to {file_location:?} {e}")
+                })?;
+                // Don't remove if same file
+                if !is_same_file {
+                    fs::remove_file(file)
+                        .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
                 }
-                fs::copy(file, &file_location).map_err(|e| {
-                    format!("Failed to copy module file from {file:?} to {file_location:?} {e}")
+                // Don't try to copy into self, will get empty file
+            } else if !is_same_file {
+                let file_content = fs::read_to_string(file)
+                    .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
+                let clean_content = hide_doctests(&file_content);
+                fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
+                    format!("Failed to write file contents to {file_location:?} {e}")
                 })?;
                 fs::remove_file(file)
                     .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
-                Ok(())
             }
+        } else if let Some(module_header) = module_expose_output {
+            let mod_file_location = self.location.join(format!("{}.rs", self.name));
+            fs::write(&mod_file_location, module_header.as_bytes())
+                .map_err(|e| format!("Failed to write module file at {mod_file_location:?} {e}"))?;
+        } else {
+            panic!("Bad code");
         }
+        Ok(())
     }
 
+    #[inline]
     fn get_name(&self) -> &str {
-        match self {
-            ModuleContainer::Parent { name, .. } | ModuleContainer::Node { name, .. } => {
-                name.as_str()
-            }
-        }
+        self.name.as_str()
     }
 }
 
@@ -285,14 +292,14 @@ fn run_diff(
         .file_name()
         .ok_or_else(|| format!("Failed to get filename when diffing original path {orig:?}"))?;
     let orig_root_file = orig_root_file_name.to_str()
-        .ok_or_else(|| format!("Failed to convert filename {orig_root_file_name:?} when diffing original path {orig:?}"))?;
+    .ok_or_else(|| format!("Failed to convert filename {orig_root_file_name:?} when diffing original path {orig:?}"))?;
     let mut orig_files = collect_files(&orig, orig_root_file)?;
     let new_root = new.as_ref();
     let new_root_file_name = new_root
         .file_name()
         .ok_or_else(|| format!("Failed to get filename when diffing new path {new:?}"))?;
     let new_root_file = new_root_file_name.to_str()
-        .ok_or_else(|| format!("Failed to convert filename {new_root_file_name:?} to utf8 when diffing new path {new:?}"))?;
+    .ok_or_else(|| format!("Failed to convert filename {new_root_file_name:?} to utf8 when diffing new path {new:?}"))?;
     let new_files = collect_files(&new, new_root_file)?;
     let mut diff = 0;
     for file in &new_files {
@@ -432,8 +439,8 @@ fn recurse_copy_over(dest_top: &Path, entry: impl AsRef<Path> + Debug) -> Result
         Ok(())
     } else {
         Err(format!(
-            "Found path which is neither a dir nor a file when copying generated protos {path:?} {metadata:?}"
-        ))
+        "Found path which is neither a dir nor a file when copying generated protos {path:?} {metadata:?}"
+    ))
     }
 }
 
@@ -455,8 +462,8 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
     }
     if !found_root {
         return Err(format!(
-            "Failed to trim path up to {root} for proto generated file at: {path:?}. Could not find {root}. "
-        ));
+        "Failed to trim path up to {root} for proto generated file at: {path:?}. Could not find {root}. "
+    ));
     }
     backwards_components.reverse();
     let pb = backwards_components.into_iter().collect::<PathBuf>();
@@ -475,7 +482,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         let path = entry.path();
         if metadata.is_file() && has_ext(&path, "rs") {
             let out = std::process::Command::new("rustfmt")
-                .arg(path)
+                .arg(&path)
                 .arg("--edition")
                 .arg("2021")
                 .output()
@@ -492,6 +499,36 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Rustdoc assumes all comments with 4 or more spaces or three backticks are things it absolutely
+/// should try to compile and run, which seems like an insane assumption, we try our best
+/// to strip those symbols here.
+fn hide_doctests(content: &str) -> String {
+    let mut in_potentially_hostile_code = false;
+    let mut new_content = String::with_capacity(content.len());
+    for line in content.lines() {
+        if let Some((_com, rest)) = line.split_once("///") {
+            if rest.len() >= 4 && rest.chars().take(4).all(char::is_whitespace) {
+                // If 4 or more spaces after comment Rustdoc will think its code it should compile
+                if !in_potentially_hostile_code {
+                    // If first time, insert ```ignore
+                    in_potentially_hostile_code = true;
+                    new_content.push_str("///```ignore\n");
+                }
+            } else if in_potentially_hostile_code {
+                // If not 4 whitespaces anymore, insert ignore end token
+                new_content.push_str("///```\n");
+                in_potentially_hostile_code = false;
+            }
+            // If no longer in comments, comment ended on 4+ whitespaces, insert another
+        } else if in_potentially_hostile_code {
+            new_content.push_str("///```\n");
+            in_potentially_hostile_code = false;
+        }
+        let _ = new_content.write_fmt(format_args!("{line}\n"));
+    }
+    new_content
 }
 
 #[inline]
