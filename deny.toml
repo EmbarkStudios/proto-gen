@@ -91,14 +91,10 @@ deny = [
     { name = "owning_ref" },        # unsound and unmaintained
 ]
 
-skip = [
-    # Syn 2.0 migration is going to take some time
-    { name = "syn", version = "1.0.109" },
+skip-tree = [
     # Always windows-sys
-    { name = "windows-sys", version = "0.45.0" },
+    { name = "windows-sys", version = "0.48.0" },
 ]
-
-skip-tree = []
 
 [sources]
 unknown-registry = "deny"

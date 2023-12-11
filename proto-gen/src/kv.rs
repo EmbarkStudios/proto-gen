@@ -74,7 +74,7 @@ mod tests {
         let cmd = Command::new("any");
         let a = None;
         let value = OsStr::new("key:value");
-        let (key, value) = KvValueParser::default().parse_ref(&cmd, a, value).unwrap();
+        let (key, value) = KvValueParser.parse_ref(&cmd, a, value).unwrap();
         assert_eq!("key", &key);
         assert_eq!("value", &value);
     }
@@ -84,7 +84,7 @@ mod tests {
         let cmd = Command::new("any");
         let a = None;
         let value = OsStr::new("key-value");
-        let Err(e) = KvValueParser::default().parse_ref(&cmd, a, value) else {
+        let Err(e) = KvValueParser.parse_ref(&cmd, a, value) else {
             panic!("Expected error on bad kv");
         };
         assert_eq!(ErrorKind::ValueValidation, e.kind());
@@ -102,7 +102,7 @@ mod tests {
         let cmd = Command::new("any");
         let a = Some(Arg::new("my_id"));
         let value = OsStr::new("key-value");
-        let Err(e) = KvValueParser::default().parse_ref(&cmd, a.as_ref(), value) else {
+        let Err(e) = KvValueParser.parse_ref(&cmd, a.as_ref(), value) else {
             panic!("Expected error on bad kv");
         };
         assert_eq!(ErrorKind::ValueValidation, e.kind());
@@ -123,7 +123,7 @@ mod tests {
         let cmd = Command::new("any");
         let a = None;
         let value = OsStr::from_bytes(b"\xc3\x28");
-        let Err(e) = KvValueParser::default().parse_ref(&cmd, a, value) else {
+        let Err(e) = KvValueParser.parse_ref(&cmd, a, value) else {
             panic!("Expected error on bad kv");
         };
         assert_eq!(ErrorKind::ValueValidation, e.kind());
@@ -143,7 +143,7 @@ mod tests {
         let cmd = Command::new("any");
         let a = Some(Arg::new("my_id"));
         let value = OsStr::from_bytes(b"\xc3\x28");
-        let Err(e) = KvValueParser::default().parse_ref(&cmd, a.as_ref(), value) else {
+        let Err(e) = KvValueParser.parse_ref(&cmd, a.as_ref(), value) else {
             panic!("Expected error on bad kv");
         };
         assert_eq!(ErrorKind::ValueValidation, e.kind());

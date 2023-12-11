@@ -248,7 +248,7 @@ message TestMessage {
         };
         // Validate it's not the same if specifying no fmt
         match run_with_opts(opts) {
-            Ok(_) => panic!("Expected fail on diff"),
+            Ok(()) => panic!("Expected fail on diff"),
             Err(code) => {
                 assert_eq!(1, code);
             }
