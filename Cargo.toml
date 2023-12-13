@@ -1,9 +1,10 @@
 [workspace]
 members = ["proto-gen"]
 exclude = ["examples/example-project", "examples/example-integration"]
+resolver = "2"
 
 [workspace.dependencies]
 clap = { version = "4.1.13", features = ["derive"] }
 proto-gen = { path = "../proto-gen" }
 tempfile = "3.4.0"
-tonic-build = { version = "0.9.1", default-features = false, features = ["transport", "prost"] }
+tonic-build = { version = "0.10.2", default-features = false, features = ["transport", "prost"] }
