@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.1] - 2024-03-01
 ### Added
 - [PR#15](https://github.com/EmbarkStudios/proto-gen/pull/15) added the `-d, --disable-comments <path>` option to code generation, allowing comments to be [disabled](https://docs.rs/prost-build/latest/prost_build/struct.Config.html#method.disable_comments) for one or more proto paths.
 
@@ -32,6 +33,7 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.1...0.2.1
 [0.1.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/EmbarkStudios/proto-gen/releases/tag/0.1.0
