@@ -43,6 +43,10 @@ struct TonicOpts {
     #[clap(long)]
     generate_transport: bool,
 
+    /// Disable comments based on proto path. Passing '.' disables all comments.
+    #[clap(short, long)]
+    disable_comments: Vec<String>,
+
     /// Type attributes to add.
     #[clap(long = "type-attribute", value_parser=KvValueParser)]
     type_attributes: Vec<(String, String)>,
@@ -103,7 +107,9 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
     let mut bldr = tonic_build::configure()
         .build_client(opts.tonic_opts.build_client)
         .build_server(opts.tonic_opts.build_server)
-        .build_transport(opts.tonic_opts.generate_transport);
+        .build_transport(opts.tonic_opts.generate_transport)
+        // this is only when being used from build scripts
+        .emit_rerun_if_changed(false);
 
     for (k, v) in opts.tonic_opts.type_attributes {
         bldr = bldr.type_attribute(k, v);
@@ -117,19 +123,27 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         bldr = bldr.server_mod_attribute(k, v);
     }
 
-    let fmt = opts.format;
-    let res = match opts.routine {
-        Routine::Validate { workspace } => run_ws(workspace, bldr, false, fmt),
-        Routine::Generate { workspace } => run_ws(workspace, bldr, true, fmt),
+    let mut config = prost_build::Config::new();
+    config.disable_comments(opts.tonic_opts.disable_comments);
+
+    let (ws, commit) = match opts.routine {
+        Routine::Validate { workspace } => (workspace, false),
+        Routine::Generate { workspace } => (workspace, true),
     };
-    if let Err(err) = res {
+    if let Err(err) = run_ws(ws, bldr, config, commit, opts.format) {
         eprintln!("Failed to run command, E: {err}");
         return Err(1);
     }
     Ok(())
 }
 
-fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Result<(), String> {
+fn run_ws(
+    opts: WorkspaceOpts,
+    bldr: Builder,
+    config: prost_build::Config,
+    commit: bool,
+    format: bool,
+) -> Result<(), String> {
     if opts.proto_files.is_empty() {
         return Err("--proto-files needs at least one file to generate".to_string());
     }
@@ -142,6 +156,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
                 output_dir: opts.output_dir,
             },
             bldr,
+            config,
             commit,
             format,
         )
@@ -156,6 +171,7 @@ fn run_ws(opts: WorkspaceOpts, bldr: Builder, commit: bool, format: bool) -> Res
                 output_dir: opts.output_dir,
             },
             bldr,
+            config,
             commit,
             format,
         )

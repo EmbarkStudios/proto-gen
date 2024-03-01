@@ -333,6 +333,7 @@ name = "proto-gen"
 version = "0.2.0"
 dependencies = [
  "clap",
+ "prost-build",
  "tempfile",
  "tonic-build",
 ]
