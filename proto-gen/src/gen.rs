@@ -4,7 +4,6 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
 use std::fmt::{Debug, Write};
 use std::fs;
 use std::io::ErrorKind;
@@ -20,10 +19,11 @@ use tonic_build::Builder;
 pub fn run_generation(
     proto_ws: &ProtoWorkspace,
     opts: Builder,
+    config: prost_build::Config,
     commit: bool,
     format: bool,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(proto_ws, opts).map_err(|e| {
+    let top_mod_content = generate_to_tmp(proto_ws, opts, config).map_err(|e| {
         format!("Failed to generate protos into temp dir for proto workspace {proto_ws:?} {e}")
     })?;
     let old = &proto_ws.output_dir;
@@ -61,35 +61,24 @@ pub struct ProtoWorkspace {
     pub output_dir: PathBuf,
 }
 
-#[inline]
-fn gen_proto(
-    src_dirs: &[impl AsRef<Path> + Debug],
-    src_files: &[impl AsRef<Path>],
-    out_dir: impl AsRef<OsStr>,
+fn generate_to_tmp(
+    ws: &ProtoWorkspace,
     opts: Builder,
-) -> Result<(), String> {
+    config: prost_build::Config,
+) -> Result<String, String> {
     let old_out = std::env::var("OUT_DIR");
-    std::env::set_var("OUT_DIR", out_dir);
+    std::env::set_var("OUT_DIR", &ws.tmp_dir);
     // Would by nice if we could just get a byte buffer instead of magic env write
-    opts.compile(src_files, src_dirs)
-        .map_err(|e| format!("Failed to compile protos from {src_dirs:?} {e}"))?;
+    opts.compile_with_config(config, &ws.proto_files, &ws.proto_dirs)
+        .map_err(|e| format!("Failed to compile protos from {:?} {e}", ws.proto_dirs))?;
     // Restore the env, cause why not
     if let Ok(old) = old_out {
         std::env::set_var("OUT_DIR", old);
     } else {
         std::env::remove_var("OUT_DIR");
     }
-    Ok(())
-}
 
-fn generate_to_tmp(workspace: &ProtoWorkspace, opts: Builder) -> Result<String, String> {
-    gen_proto(
-        &workspace.proto_dirs,
-        &workspace.proto_files,
-        &workspace.tmp_dir,
-        opts,
-    )?;
-    clean_up_file_structure(&workspace.tmp_dir)
+    clean_up_file_structure(&ws.tmp_dir)
 }
 
 fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
