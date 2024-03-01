@@ -21,7 +21,7 @@ use gen::ProtoWorkspace;
 #[command(author, version, about, long_about = None)]
 struct Opts {
     #[clap(flatten)]
-    tonic_opts: TonicOpts,
+    tonic: TonicOpts,
     /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path
     #[clap(short, long)]
     format: bool,
@@ -105,26 +105,26 @@ fn main() -> Result<(), i32> {
 
 fn run_with_opts(opts: Opts) -> Result<(), i32> {
     let mut bldr = tonic_build::configure()
-        .build_client(opts.tonic_opts.build_client)
-        .build_server(opts.tonic_opts.build_server)
-        .build_transport(opts.tonic_opts.generate_transport)
+        .build_client(opts.tonic.build_client)
+        .build_server(opts.tonic.build_server)
+        .build_transport(opts.tonic.generate_transport)
         // this is only when being used from build scripts
         .emit_rerun_if_changed(false);
 
-    for (k, v) in opts.tonic_opts.type_attributes {
+    for (k, v) in opts.tonic.type_attributes {
         bldr = bldr.type_attribute(k, v);
     }
 
-    for (k, v) in opts.tonic_opts.client_attributes {
+    for (k, v) in opts.tonic.client_attributes {
         bldr = bldr.client_mod_attribute(k, v);
     }
 
-    for (k, v) in opts.tonic_opts.server_attributes {
+    for (k, v) in opts.tonic.server_attributes {
         bldr = bldr.server_mod_attribute(k, v);
     }
 
     let mut config = prost_build::Config::new();
-    config.disable_comments(opts.tonic_opts.disable_comments);
+    config.disable_comments(opts.tonic.disable_comments);
 
     let (ws, commit) = match opts.routine {
         Routine::Validate { workspace } => (workspace, false),
@@ -186,7 +186,7 @@ mod tests {
 
     struct SimpleTestCfg {
         _keep_alive_project_base: TempDir,
-        tonic_opts: TonicOpts,
+        tonic: TonicOpts,
         workspace: WorkspaceOpts,
     }
 
@@ -213,10 +213,11 @@ message TestMessage {
         std::fs::create_dir_all(&proto_files_dir).unwrap();
         std::fs::write(&my_proto, ex_proto_content).unwrap();
         let proto_types_dir = src.join("proto_types");
-        let tonic_opts = TonicOpts {
+        let tonic = TonicOpts {
             build_server: false,
             build_client: false,
             generate_transport: false,
+            disable_comments: vec![],
             type_attributes: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
@@ -229,7 +230,7 @@ message TestMessage {
         };
         SimpleTestCfg {
             _keep_alive_project_base: project_base,
-            tonic_opts,
+            tonic,
             workspace,
         }
     }
@@ -238,7 +239,7 @@ message TestMessage {
     fn full_generate_single_file_project() {
         let test_cfg = create_simple_test_cfg(None);
         let opts = Opts {
-            tonic_opts: test_cfg.tonic_opts.clone(),
+            tonic: test_cfg.tonic.clone(),
             format: true,
             routine: Routine::Generate {
                 workspace: test_cfg.workspace.clone(),
@@ -247,7 +248,7 @@ message TestMessage {
         // Generate
         run_with_opts(opts).unwrap();
         let opts = Opts {
-            tonic_opts: test_cfg.tonic_opts.clone(),
+            tonic: test_cfg.tonic.clone(),
             format: true,
             routine: Routine::Validate {
                 workspace: test_cfg.workspace.clone(),
@@ -256,7 +257,7 @@ message TestMessage {
         // Validate it's the same after generation
         run_with_opts(opts).unwrap();
         let opts = Opts {
-            tonic_opts: test_cfg.tonic_opts.clone(),
+            tonic: test_cfg.tonic.clone(),
             format: false,
             routine: Routine::Validate {
                 workspace: test_cfg.workspace,
@@ -276,7 +277,7 @@ message TestMessage {
         let my_output_tmp = tempfile::tempdir().unwrap();
         let test_cfg = create_simple_test_cfg(Some(my_output_tmp.path().to_path_buf()));
         let opts = Opts {
-            tonic_opts: test_cfg.tonic_opts.clone(),
+            tonic: test_cfg.tonic.clone(),
             format: false,
             routine: Routine::Generate {
                 workspace: test_cfg.workspace,
@@ -351,10 +352,11 @@ message NestedTransitiveMsg {
         )
         .unwrap();
         let proto_types_dir = src.join("proto_types");
-        let tonic_opts = TonicOpts {
+        let tonic = TonicOpts {
             build_server: false,
             build_client: false,
             generate_transport: false,
+            disable_comments: vec![],
             type_attributes: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
@@ -366,7 +368,7 @@ message NestedTransitiveMsg {
             output_dir: proto_types_dir.clone(),
         };
         let opts = Opts {
-            tonic_opts,
+            tonic,
             format: false,
             routine: Routine::Generate { workspace },
         };
