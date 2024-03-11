@@ -265,7 +265,7 @@ impl Module {
     }
 
     #[inline]
-    fn proper_file_name<'a>(&self) -> &str {
+    fn proper_file_name(&self) -> &str {
         if self.name.starts_with("r#") {
             &self.name[2..]
         } else {
