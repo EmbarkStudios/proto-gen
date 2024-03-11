@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.2] - 2024-03-11
 ### Fixed
 - [PR#17](https://github.com/EmbarkStudios/proto-gen/pull/17) Make errors slightly easier to read.
 - [PR#18](https://github.com/EmbarkStudios/proto-gen/pull/18) Fix handling of filename for target .rs file when it's a keyword.
@@ -36,7 +37,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.2...HEAD
+[0.2.2]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.1...0.2.1
 [0.1.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/EmbarkStudios/proto-gen/releases/tag/0.1.0
