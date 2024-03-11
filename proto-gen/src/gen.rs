@@ -24,7 +24,7 @@ pub fn run_generation(
     format: bool,
 ) -> Result<(), String> {
     let top_mod_content = generate_to_tmp(proto_ws, opts, config).map_err(|e| {
-        format!("Failed to generate protos into temp dir for proto workspace {proto_ws:?} {e}")
+        format!("Failed to generate protos into temp dir for proto workspace {proto_ws:#?} \n{e}")
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
@@ -43,7 +43,7 @@ pub fn run_generation(
             })?;
             let mod_file = out_parent.join(format!("{out_top_name}.rs"));
             fs::write(&mod_file, top_mod_content.as_bytes())
-                .map_err(|e| format!("Failed to write parent module file to {mod_file:?} {e}"))?;
+                .map_err(|e| format!("Failed to write parent module file to {mod_file:?} \n{e}"))?;
         } else {
             return Err(format!("Found {diff} diffs at {:?}", proto_ws.output_dir));
         }
@@ -70,7 +70,7 @@ fn generate_to_tmp(
     std::env::set_var("OUT_DIR", &ws.tmp_dir);
     // Would by nice if we could just get a byte buffer instead of magic env write
     opts.compile_with_config(config, &ws.proto_files, &ws.proto_dirs)
-        .map_err(|e| format!("Failed to compile protos from {:?} {e}", ws.proto_dirs))?;
+        .map_err(|e| format!("Failed to compile protos from {:#?} \n{e}", ws.proto_dirs))?;
     // Restore the env, cause why not
     if let Ok(old) = old_out {
         std::env::set_var("OUT_DIR", old);
@@ -83,7 +83,7 @@ fn generate_to_tmp(
 
 fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
     let rd = fs::read_dir(out_dir)
-        .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files {e}"))?;
+        .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files \n{e}"))?;
     let mut out_modules = Module {
         name: "dummy".to_string(),
         location: out_dir.to_path_buf(),
@@ -93,19 +93,20 @@ fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
     for entry in rd {
         let entry = entry.map_err(|e| {
             format!(
-                "Failed to read DirEntry when cleaning up output dir {:?} {e}",
+                "Failed to read DirEntry when cleaning up output dir {:?} \n{e}",
                 &out_dir
             )
         })?;
         let file_path = entry.path();
-        let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entity {file_path:?} in output dir {out_dir:?} when cleaning up files {e}"))?;
+        let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entity {file_path:?} in output dir {out_dir:?} when cleaning up files \n{e}"))?;
         if metadata.is_file() {
             // Tonic build 0.7 generates a bunch of empty files for some reason, fixed in 0.8
-            let content = fs::read(&file_path)
-                .map_err(|e| format!("Failed to read generated file at path {file_path:?} {e}"))?;
+            let content = fs::read(&file_path).map_err(|e| {
+                format!("Failed to read generated file at path {file_path:?} \n{e}")
+            })?;
             if content.is_empty() {
                 fs::remove_file(&file_path).map_err(|e| {
-                    format!("Failed to delete empty file {file_path:?} from temp directory {e}")
+                    format!("Failed to delete empty file {file_path:?} from temp directory \n{e}")
                 })?;
             } else {
                 out_modules.push_file(out_dir, &file_path)?;
@@ -194,7 +195,7 @@ impl Module {
         } else {
             let dir = self.location.join(&self.name);
             fs::create_dir_all(&dir)
-                .map_err(|e| format!("Failed to create module directory for {dir:?} {e}"))?;
+                .map_err(|e| format!("Failed to create module directory for {dir:?} \n{e}"))?;
             let mut sortable_children = self
                 .children
                 .values()
@@ -221,33 +222,35 @@ impl Module {
             let is_same_file = &file_location == file;
             if let Some(mut module_header) = module_expose_output {
                 let file_content = fs::read_to_string(file)
-                    .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
+                    .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
                 module_header.push('\n');
                 module_header.push_str(&file_content);
                 let clean = hide_doctests(&module_header);
                 fs::write(&file_location, clean.as_bytes()).map_err(|e| {
-                    format!("Failed to write file contents to {file_location:?} {e}")
+                    format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
                 // Don't remove if same file
                 if !is_same_file {
-                    fs::remove_file(file)
-                        .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
+                    fs::remove_file(file).map_err(|e| {
+                        format!("Failed to remove original file from {file:?} \n{e}")
+                    })?;
                 }
                 // Don't try to copy into self, will get empty file
             } else if !is_same_file {
                 let file_content = fs::read_to_string(file)
-                    .map_err(|e| format!("Failed to read created file {file:?} {e}"))?;
+                    .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
                 let clean_content = hide_doctests(&file_content);
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
-                    format!("Failed to write file contents to {file_location:?} {e}")
+                    format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
                 fs::remove_file(file)
-                    .map_err(|e| format!("Failed to remove original file from {file:?} {e}"))?;
+                    .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
             }
         } else if let Some(module_header) = module_expose_output {
             let mod_file_location = self.location.join(format!("{}.rs", self.name));
-            fs::write(&mod_file_location, module_header.as_bytes())
-                .map_err(|e| format!("Failed to write module file at {mod_file_location:?} {e}"))?;
+            fs::write(&mod_file_location, module_header.as_bytes()).map_err(|e| {
+                format!("Failed to write module file at {mod_file_location:?} \n{e}")
+            })?;
         } else {
             panic!("Bad code");
         }
@@ -296,9 +299,9 @@ fn run_diff(
             let orig_path = orig.as_ref().join(file);
             let new_path = new.as_ref().join(file);
             let a = fs::read(&orig_path)
-                .map_err(|e| format!("Failed to read file at {orig_path:?} {e}"))?;
+                .map_err(|e| format!("Failed to read file at {orig_path:?} \n{e}"))?;
             let b = fs::read(&new_path)
-                .map_err(|e| format!("Failed to read file at {new_path:?} {e}"))?;
+                .map_err(|e| format!("Failed to read file at {new_path:?} \n{e}"))?;
             if a != b {
                 eprintln!("Found diff in {file:?}");
                 diff += 1;
@@ -326,7 +329,7 @@ fn run_diff(
         Err(ref e) if e.kind() == ErrorKind::NotFound => diff += 1,
         Err(e) => {
             return Err(format!(
-                "Failed to read old mod file at {old_top_mod_path:?} {e}"
+                "Failed to read old mod file at {old_top_mod_path:?} \n{e}"
             ));
         }
     };
@@ -344,10 +347,10 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<HashSet
             let mut all_files = HashSet::new();
             for entry in rd {
                 let entry = entry.map_err(|e| {
-                    format!("Failed to read entry when checking for file diff at {source:?} {e}")
+                    format!("Failed to read entry when checking for file diff at {source:?} \n{e}")
                 })?;
                 let entry_path = entry.path();
-                let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entry {entry_path:?} when checking for file diff at {source:?} {e}"))?;
+                let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata for entry {entry_path:?} when checking for file diff at {source:?} \n{e}"))?;
                 if metadata.is_file() {
                     let pb = path_from_starts_with(root, &entry_path)?;
                     all_files.insert(pb);
@@ -361,7 +364,7 @@ fn collect_files(source: impl AsRef<Path> + Debug, root: &str) -> Result<HashSet
         }
         Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(HashSet::new()),
         Err(e) => Err(format!(
-            "Got error reading dir {source:?} to check diff {e}"
+            "Got error reading dir {source:?} to check diff \n{e}"
         )),
     }
 }
@@ -372,9 +375,9 @@ fn recurse_copy_clean(
 ) -> Result<(), String> {
     if dest.as_ref().exists() {
         fs::remove_dir_all(&dest)
-            .map_err(|e| format!("Failed to clean out old dir {dest:?} {e}"))?;
+            .map_err(|e| format!("Failed to clean out old dir {dest:?} \n{e}"))?;
         fs::create_dir(&dest)
-            .map_err(|e| format!("Failed to create new proto dir {dest:?} {e}"))?;
+            .map_err(|e| format!("Failed to create new proto dir {dest:?} \n{e}"))?;
     }
 
     let source_top = source.as_ref();
@@ -386,14 +389,15 @@ fn recurse_copy_clean(
             ));
         }
     } else {
-        fs::create_dir_all(dest_top)
-            .map_err(|e| format!("Failed to create generated output destination directory {e}"))?;
+        fs::create_dir_all(dest_top).map_err(|e| {
+            format!("Failed to create generated output destination directory \n{e}")
+        })?;
     }
     for entry in fs::read_dir(&source).map_err(|e| {
-        format!("Failed to read source dir {source_top:?} to copy generated protos {e}")
+        format!("Failed to read source dir {source_top:?} to copy generated protos \n{e}")
     })? {
         let entry =
-            entry.map_err(|e| format!("Failed to read entry to copy generated protos {e}"))?;
+            entry.map_err(|e| format!("Failed to read entry to copy generated protos \n{e}"))?;
         recurse_copy_over(dest_top, entry.path())?;
     }
 
@@ -403,7 +407,7 @@ fn recurse_copy_clean(
 fn recurse_copy_over(dest_top: &Path, entry: impl AsRef<Path> + Debug) -> Result<(), String> {
     let path = entry.as_ref();
     let metadata = path.metadata().map_err(|e| {
-        format!("Failed to get metadata for {path:?} to copy to generated protos from {e}")
+        format!("Failed to get metadata for {path:?} to copy to generated protos from \n{e}")
     })?;
     let last_component = path
         .file_name()
@@ -411,18 +415,18 @@ fn recurse_copy_over(dest_top: &Path, entry: impl AsRef<Path> + Debug) -> Result
     let new_dir = dest_top.join(last_component);
     if metadata.is_file() {
         fs::copy(path, &new_dir).map_err(|e| {
-            format!("Failed to copy generated file from {path:?} to {new_dir:?} E: {e}")
+            format!("Failed to copy generated file from {path:?} to {new_dir:?} \n{e}")
         })?;
         Ok(())
     } else if metadata.is_dir() {
         fs::create_dir_all(&new_dir).map_err(|e| {
-            format!("Failed to create dir to place generated proto at {new_dir:?} {e}")
+            format!("Failed to create dir to place generated proto at {new_dir:?} \n{e}")
         })?;
         for entry in fs::read_dir(path)
-            .map_err(|e| format!("Failed to read dir while recursively copying {e}"))?
+            .map_err(|e| format!("Failed to read dir while recursively copying \n{e}"))?
         {
-            let entry =
-                entry.map_err(|e| format!("Failed to read entry while recursively copying {e}"))?;
+            let entry = entry
+                .map_err(|e| format!("Failed to read entry while recursively copying \n{e}"))?;
             recurse_copy_over(&new_dir, entry.path())?;
         }
         Ok(())
@@ -462,12 +466,12 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
 fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
     let path = base.as_ref();
     for file in
-        fs::read_dir(path).map_err(|e| format!("failed to read_dir for path {path:?} {e}"))?
+        fs::read_dir(path).map_err(|e| format!("failed to read_dir for path {path:?} \n{e}"))?
     {
-        let entry = file.map_err(|e| format!("Failed to read entry in paht {path:?} {e}"))?;
+        let entry = file.map_err(|e| format!("Failed to read entry in paht {path:?} \n{e}"))?;
         let metadata = entry
             .metadata()
-            .map_err(|e| format!("Failed to read metadata for entry {entry:?} {e}"))?;
+            .map_err(|e| format!("Failed to read metadata for entry {entry:?} \n{e}"))?;
         let path = entry.path();
         if metadata.is_file() && has_ext(&path, "rs") {
             let out = std::process::Command::new("rustfmt")
@@ -475,7 +479,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
                 .arg("--edition")
                 .arg("2021")
                 .output()
-                .map_err(|e| format!("Failed to format generated code {e}"))?;
+                .map_err(|e| format!("Failed to format generated code \n{e}"))?;
             if !out.status.success() {
                 return Err(format!(
                     "Failed to format, rustfmt returned error status {} with stderr {:?}",

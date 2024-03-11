@@ -131,7 +131,7 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         Routine::Generate { workspace } => (workspace, true),
     };
     if let Err(err) = run_ws(ws, bldr, config, commit, opts.format) {
-        eprintln!("Failed to run command, E: {err}");
+        eprintln!("Failed to run command \n{err}");
         return Err(1);
     }
     Ok(())
@@ -162,7 +162,7 @@ fn run_ws(
         )
     } else {
         // Deleted on drop
-        let tmp = tempfile::tempdir().map_err(|e| format!("Failed to create tempdir {e}"))?;
+        let tmp = tempfile::tempdir().map_err(|e| format!("Failed to create tempdir \n{e}"))?;
         gen::run_generation(
             &ProtoWorkspace {
                 proto_dirs: opts.proto_dirs,
