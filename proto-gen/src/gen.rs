@@ -216,7 +216,9 @@ impl Module {
             Some(output)
         };
         if let Some(file) = self.file.as_ref() {
-            let file_location = self.location.join(format!("{}.rs", self.name));
+            let file_location = self
+                .location
+                .join(format!("{}.rs", self.proper_file_name()));
             // It's the same filename we don't need to move it but we need to edit it if it has
             // child modules.
             let is_same_file = &file_location == file;
@@ -260,6 +262,15 @@ impl Module {
     #[inline]
     fn get_name(&self) -> &str {
         self.name.as_str()
+    }
+
+    #[inline]
+    fn proper_file_name<'a>(&self) -> &str {
+        if self.name.starts_with("r#") {
+            &self.name[2..]
+        } else {
+            self.name.as_str()
+        }
     }
 }
 
