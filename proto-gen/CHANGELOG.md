@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#17](https://github.com/EmbarkStudios/proto-gen/pull/17) Make errors slightly easier to read.
+- [PR#18](https://github.com/EmbarkStudios/proto-gen/pull/18) Fix handling of filename for target .rs file when it's a keyword.
 ## [0.2.1] - 2024-03-01
 ### Added
 - [PR#15](https://github.com/EmbarkStudios/proto-gen/pull/15) added the `-d, --disable-comments <path>` option to code generation, allowing comments to be [disabled](https://docs.rs/prost-build/latest/prost_build/struct.Config.html#method.disable_comments) for one or more proto paths.
