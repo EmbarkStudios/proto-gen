@@ -4,6 +4,7 @@
 mod gen;
 mod kv;
 
+use gen::GenOptions;
 use kv::KvValueParser;
 
 use std::fmt::Debug;
@@ -25,6 +26,9 @@ struct Opts {
     /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path
     #[clap(short, long)]
     format: bool,
+    /// Prepend header indicating tool version in generated source files
+    #[clap(short, long, default_value_t = false)]
+    prepend_header: bool,
     #[command(subcommand)]
     routine: Routine,
 }
@@ -130,7 +134,12 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         Routine::Validate { workspace } => (workspace, false),
         Routine::Generate { workspace } => (workspace, true),
     };
-    if let Err(err) = run_ws(ws, bldr, config, commit, opts.format) {
+    let gen_opts = GenOptions {
+        commit,
+        format: opts.format,
+        prepend_header: opts.prepend_header,
+    };
+    if let Err(err) = run_ws(ws, bldr, config, gen_opts) {
         eprintln!("Failed to run command \n{err}");
         return Err(1);
     }
@@ -141,8 +150,7 @@ fn run_ws(
     opts: WorkspaceOpts,
     bldr: Builder,
     config: prost_build::Config,
-    commit: bool,
-    format: bool,
+    gen_opts: GenOptions,
 ) -> Result<(), String> {
     if opts.proto_files.is_empty() {
         return Err("--proto-files needs at least one file to generate".to_string());
@@ -157,8 +165,7 @@ fn run_ws(
             },
             bldr,
             config,
-            commit,
-            format,
+            gen_opts,
         )
     } else {
         // Deleted on drop
@@ -172,8 +179,7 @@ fn run_ws(
             },
             bldr,
             config,
-            commit,
-            format,
+            gen_opts,
         )
     }
 }
@@ -244,6 +250,7 @@ message TestMessage {
             routine: Routine::Generate {
                 workspace: test_cfg.workspace.clone(),
             },
+            prepend_header: true,
         };
         // Generate
         run_with_opts(opts).unwrap();
@@ -253,6 +260,7 @@ message TestMessage {
             routine: Routine::Validate {
                 workspace: test_cfg.workspace.clone(),
             },
+            prepend_header: true,
         };
         // Validate it's the same after generation
         run_with_opts(opts).unwrap();
@@ -262,6 +270,7 @@ message TestMessage {
             routine: Routine::Validate {
                 workspace: test_cfg.workspace,
             },
+            prepend_header: true,
         };
         // Validate it's not the same if specifying no fmt
         match run_with_opts(opts) {
@@ -282,6 +291,7 @@ message TestMessage {
             routine: Routine::Generate {
                 workspace: test_cfg.workspace,
             },
+            prepend_header: true,
         };
         // Generate
         run_with_opts(opts).unwrap();
@@ -371,6 +381,7 @@ message NestedTransitiveMsg {
             tonic,
             format: false,
             routine: Routine::Generate { workspace },
+            prepend_header: true,
         };
         run_with_opts(opts).unwrap();
         assert_exists_not_empty(&proto_types_dir.join("my_proto.rs"));
