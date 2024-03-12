@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#19](https://github.com/EmbarkStudios/proto-gen/pull/19) Added `-p, --prepend-header` option (default false) to prepend header indicating tool version in generated source file.
+- [PR#20](https://github.com/EmbarkStudios/proto-gen/pull/20) Added `--toplevel-attribute` option to set toplevel module attribute.
 ## [0.2.2] - 2024-03-11
 ### Fixed
 - [PR#17](https://github.com/EmbarkStudios/proto-gen/pull/17) Make errors slightly easier to read.
