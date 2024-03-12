@@ -23,14 +23,20 @@ use gen::ProtoWorkspace;
 struct Opts {
     #[clap(flatten)]
     tonic: TonicOpts,
+
     /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path
     #[clap(short, long)]
     format: bool,
+
     /// Prepend header indicating tool version in generated source files
     #[clap(short, long, default_value_t = false)]
     prepend_header: bool,
     #[command(subcommand)]
     routine: Routine,
+
+    /// Toplevel mod attribute to add.
+    #[clap(long)]
+    toplevel_attribute: Option<String>,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -138,6 +144,7 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         commit,
         format: opts.format,
         prepend_header: opts.prepend_header,
+        toplevel_attribute: opts.toplevel_attribute,
     };
     if let Err(err) = run_ws(ws, bldr, config, &gen_opts) {
         eprintln!("Failed to run command \n{err}");
@@ -251,6 +258,7 @@ message TestMessage {
                 workspace: test_cfg.workspace.clone(),
             },
             prepend_header: true,
+            toplevel_attribute: None,
         };
         // Generate
         run_with_opts(opts).unwrap();
@@ -261,6 +269,7 @@ message TestMessage {
                 workspace: test_cfg.workspace.clone(),
             },
             prepend_header: true,
+            toplevel_attribute: None,
         };
         // Validate it's the same after generation
         run_with_opts(opts).unwrap();
@@ -271,6 +280,7 @@ message TestMessage {
                 workspace: test_cfg.workspace,
             },
             prepend_header: true,
+            toplevel_attribute: None,
         };
         // Validate it's not the same if specifying no fmt
         match run_with_opts(opts) {
@@ -292,6 +302,7 @@ message TestMessage {
                 workspace: test_cfg.workspace,
             },
             prepend_header: true,
+            toplevel_attribute: None,
         };
         // Generate
         run_with_opts(opts).unwrap();
@@ -382,6 +393,7 @@ message NestedTransitiveMsg {
             format: false,
             routine: Routine::Generate { workspace },
             prepend_header: true,
+            toplevel_attribute: None,
         };
         run_with_opts(opts).unwrap();
         assert_exists_not_empty(&proto_types_dir.join("my_proto.rs"));

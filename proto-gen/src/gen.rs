@@ -66,6 +66,7 @@ pub struct GenOptions {
     pub commit: bool,
     pub format: bool,
     pub prepend_header: bool,
+    pub toplevel_attribute: Option<String>,
 }
 
 fn generate_to_tmp(
@@ -127,6 +128,11 @@ fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<Stri
         .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
     let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
+    if let Some(toplevel_attribute) = &gen_opts.toplevel_attribute {
+        top_level_mod.push_str(toplevel_attribute);
+        top_level_mod.push('\n');
+    }
+
     sortable_children.sort_by(|a, b| a.borrow().get_name().cmp(b.borrow().get_name()));
     for module in sortable_children {
         module.borrow_mut().dump_to_disk(gen_opts)?;
