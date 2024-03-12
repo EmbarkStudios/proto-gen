@@ -20,21 +20,20 @@ pub fn run_generation(
     proto_ws: &ProtoWorkspace,
     opts: Builder,
     config: prost_build::Config,
-    commit: bool,
-    format: bool,
+    gen_opts: &GenOptions,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(proto_ws, opts, config).map_err(|e| {
+    let top_mod_content = generate_to_tmp(proto_ws, opts, config, gen_opts).map_err(|e| {
         format!("Failed to generate protos into temp dir for proto workspace {proto_ws:#?} \n{e}")
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
-    if format {
+    if gen_opts.format {
         recurse_fmt(new)?;
     }
     let diff = run_diff(old, new, &top_mod_content)?;
     if diff > 0 {
         println!("Found diff in {diff} protos at {:?}", proto_ws.output_dir);
-        if commit {
+        if gen_opts.commit {
             println!("Writing {diff} protos to {:?}", proto_ws.output_dir);
             recurse_copy_clean(new, old)?;
             let out_top_name = as_file_name_string(old)?;
@@ -61,10 +60,19 @@ pub struct ProtoWorkspace {
     pub output_dir: PathBuf,
 }
 
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug)]
+pub struct GenOptions {
+    pub commit: bool,
+    pub format: bool,
+    pub prepend_header: bool,
+}
+
 fn generate_to_tmp(
     ws: &ProtoWorkspace,
     opts: Builder,
     config: prost_build::Config,
+    gen_opts: &GenOptions,
 ) -> Result<String, String> {
     let old_out = std::env::var("OUT_DIR");
     std::env::set_var("OUT_DIR", &ws.tmp_dir);
@@ -78,10 +86,10 @@ fn generate_to_tmp(
         std::env::remove_var("OUT_DIR");
     }
 
-    clean_up_file_structure(&ws.tmp_dir)
+    clean_up_file_structure(&ws.tmp_dir, gen_opts)
 }
 
-fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
+fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<String, String> {
     let rd = fs::read_dir(out_dir)
         .map_err(|e| format!("Failed read output dir {out_dir:?} when cleaning up files \n{e}"))?;
     let mut out_modules = Module {
@@ -121,7 +129,7 @@ fn clean_up_file_structure(out_dir: &Path) -> Result<String, String> {
     let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
     sortable_children.sort_by(|a, b| a.borrow().get_name().cmp(b.borrow().get_name()));
     for module in sortable_children {
-        module.borrow_mut().dump_to_disk()?;
+        module.borrow_mut().dump_to_disk(gen_opts)?;
         let _ = top_level_mod.write_fmt(format_args!("pub mod {};\n", module.borrow().get_name()));
     }
     Ok(top_level_mod)
@@ -189,7 +197,7 @@ impl Module {
         Ok(())
     }
 
-    fn dump_to_disk(&self) -> Result<(), String> {
+    fn dump_to_disk(&self, gen_opts: &GenOptions) -> Result<(), String> {
         let module_expose_output = if self.children.is_empty() {
             None
         } else {
@@ -211,7 +219,7 @@ impl Module {
                     "pub mod {};\n",
                     sorted_child.borrow().get_name()
                 ));
-                sorted_child.borrow().dump_to_disk()?;
+                sorted_child.borrow().dump_to_disk(gen_opts)?;
             }
             Some(output)
         };
@@ -241,7 +249,12 @@ impl Module {
             } else if !is_same_file {
                 let file_content = fs::read_to_string(file)
                     .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
-                let clean_content = hide_doctests(&file_content);
+                let mut clean_content = hide_doctests(&file_content);
+
+                if gen_opts.prepend_header {
+                    prepend_header(&mut clean_content);
+                }
+
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
@@ -272,6 +285,14 @@ impl Module {
             self.name.as_str()
         }
     }
+}
+
+fn prepend_header(clean_content: &mut String) {
+    let version = env!("CARGO_PKG_VERSION");
+    clean_content.insert_str(
+        0,
+        &format!("// Generated with https://github.com/EmbarkStudios/proto-gen v.{version}\n\n"),
+    );
 }
 
 fn as_file_name_string(path: impl AsRef<Path>) -> Result<String, String> {
