@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.3] - 2024-03-12
 ### Added
 - [PR#19](https://github.com/EmbarkStudios/proto-gen/pull/19) Added `-p, --prepend-header` option (default false) to prepend header indicating tool version in generated source file.
 - [PR#20](https://github.com/EmbarkStudios/proto-gen/pull/20) Added `--toplevel-attribute` option to set toplevel module attribute.
@@ -40,7 +41,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.2...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.3...HEAD
+[0.2.3]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.2...0.2.3
 [0.2.2]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.1...0.2.1
 [0.1.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.0...0.1.1
