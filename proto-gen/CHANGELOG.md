@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#21](https://github.com/EmbarkStudios/proto-gen/pull/21) Fix for handling multiline code blocks in comments and make them ignored for doc tests.
 ## [0.2.3] - 2024-03-12
 ### Added
 - [PR#19](https://github.com/EmbarkStudios/proto-gen/pull/19) Added `-p, --prepend-header` option (default false) to prepend header indicating tool version in generated source file.
