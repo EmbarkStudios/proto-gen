@@ -536,27 +536,41 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
 /// should try to compile and run, which seems like an insane assumption, we try our best
 /// to strip those symbols here.
 fn hide_doctests(content: &str) -> String {
+    let mut in_multiline_codeblock = false;
     let mut in_potentially_hostile_code = false;
     let mut new_content = String::with_capacity(content.len());
     for line in content.lines() {
-        if let Some((_com, rest)) = line.split_once("///") {
-            if rest.len() >= 4 && rest.chars().take(4).all(char::is_whitespace) {
-                // If 4 or more spaces after comment Rustdoc will think its code it should compile
-                if !in_potentially_hostile_code {
-                    // If first time, insert ```ignore
-                    in_potentially_hostile_code = true;
-                    new_content.push_str("///```ignore\n");
+        if line.ends_with("```") {
+            if in_multiline_codeblock {
+                in_multiline_codeblock = false;
+            } else {
+                in_multiline_codeblock = true;
+                let _ = new_content.write_fmt(format_args!("{line}ignore\n"));
+                continue;
+            }
+        }
+
+        if !in_multiline_codeblock {
+            if let Some((_com, rest)) = line.split_once("///") {
+                if rest.len() >= 4 && rest.chars().take(4).all(char::is_whitespace) {
+                    // If 4 or more spaces after comment Rustdoc will think its code it should compile
+                    if !in_potentially_hostile_code {
+                        // If first time, insert ```ignore
+                        in_potentially_hostile_code = true;
+                        new_content.push_str("///```ignore\n");
+                    }
+                } else if in_potentially_hostile_code {
+                    // If not 4 whitespaces anymore, insert ignore end token
+                    new_content.push_str("///```\n");
+                    in_potentially_hostile_code = false;
                 }
+                // If no longer in comments, comment ended on 4+ whitespaces, insert another
             } else if in_potentially_hostile_code {
-                // If not 4 whitespaces anymore, insert ignore end token
                 new_content.push_str("///```\n");
                 in_potentially_hostile_code = false;
             }
-            // If no longer in comments, comment ended on 4+ whitespaces, insert another
-        } else if in_potentially_hostile_code {
-            new_content.push_str("///```\n");
-            in_potentially_hostile_code = false;
         }
+
         let _ = new_content.write_fmt(format_args!("{line}\n"));
     }
     new_content
