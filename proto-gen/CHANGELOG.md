@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.4] - 2024-03-12
 ### Fixed
 - [PR#21](https://github.com/EmbarkStudios/proto-gen/pull/21) Fix for handling multiline code blocks in comments and make them ignored for doc tests.
 ## [0.2.3] - 2024-03-12
@@ -43,7 +44,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.3...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.4...HEAD
+[0.2.4]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.2...0.2.3
 [0.2.2]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/EmbarkStudios/proto-gen/compare/0.1.1...0.2.1
