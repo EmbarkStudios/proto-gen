@@ -139,7 +139,7 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         format: opts.format,
         prepend_header: opts.prepend_header,
     };
-    if let Err(err) = run_ws(ws, bldr, config, gen_opts) {
+    if let Err(err) = run_ws(ws, bldr, config, &gen_opts) {
         eprintln!("Failed to run command \n{err}");
         return Err(1);
     }
@@ -150,7 +150,7 @@ fn run_ws(
     opts: WorkspaceOpts,
     bldr: Builder,
     config: prost_build::Config,
-    gen_opts: GenOptions,
+    gen_opts: &GenOptions,
 ) -> Result<(), String> {
     if opts.proto_files.is_empty() {
         return Err("--proto-files needs at least one file to generate".to_string());

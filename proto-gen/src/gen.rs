@@ -20,9 +20,9 @@ pub fn run_generation(
     proto_ws: &ProtoWorkspace,
     opts: Builder,
     config: prost_build::Config,
-    gen_opts: GenOptions,
+    gen_opts: &GenOptions,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(proto_ws, opts, config, &gen_opts).map_err(|e| {
+    let top_mod_content = generate_to_tmp(proto_ws, opts, config, gen_opts).map_err(|e| {
         format!("Failed to generate protos into temp dir for proto workspace {proto_ws:#?} \n{e}")
     })?;
     let old = &proto_ws.output_dir;
@@ -60,6 +60,7 @@ pub struct ProtoWorkspace {
     pub output_dir: PathBuf,
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct GenOptions {
     pub commit: bool,
