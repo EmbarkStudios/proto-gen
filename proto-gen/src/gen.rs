@@ -225,6 +225,9 @@ impl Module {
                 a_borrow.get_name().cmp(b_borrow.get_name())
             });
             let mut output = String::new();
+            if gen_opts.prepend_header {
+                prepend_header(&mut output);
+            }
             for sorted_child in sortable_children {
                 let _ = output.write_fmt(format_args!(
                     "pub mod {};\n",
