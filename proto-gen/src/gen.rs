@@ -249,7 +249,11 @@ impl Module {
                     .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
                 module_header.push('\n');
                 module_header.push_str(&file_content);
-                let clean = hide_doctests(&module_header);
+                let mut clean = hide_doctests(&module_header);
+                if gen_opts.prepend_header {
+                    prepend_header(&mut clean);
+                }
+
                 fs::write(&file_location, clean.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
@@ -260,11 +264,13 @@ impl Module {
                     })?;
                 }
                 // Don't try to copy into self, will get empty file
-            } else if !is_same_file {
+            } else {
                 let file_content = fs::read_to_string(file)
                     .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
-                let mut clean_content = hide_doctests(&file_content);
+                fs::remove_file(file)
+                    .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
 
+                let mut clean_content = hide_doctests(&file_content);
                 if gen_opts.prepend_header {
                     prepend_header(&mut clean_content);
                 }
@@ -272,8 +278,6 @@ impl Module {
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
-                fs::remove_file(file)
-                    .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
             }
         } else if let Some(module_header) = module_expose_output {
             let mod_file_location = self.location.join(format!("{}.rs", self.name));
