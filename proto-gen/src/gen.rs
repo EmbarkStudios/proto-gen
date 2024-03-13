@@ -127,7 +127,12 @@ fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<Stri
         .into_values()
         .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
-    let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
+    let mut top_level_mod = String::new();
+    if gen_opts.prepend_header {
+        prepend_header(&mut top_level_mod);
+    }
+    top_level_mod.push_str("#![allow(clippy::doc_markdown, clippy::use_self)]\n");
+
     if let Some(toplevel_attribute) = &gen_opts.toplevel_attribute {
         top_level_mod.push_str(toplevel_attribute);
         top_level_mod.push('\n');
@@ -220,6 +225,9 @@ impl Module {
                 a_borrow.get_name().cmp(b_borrow.get_name())
             });
             let mut output = String::new();
+            if gen_opts.prepend_header {
+                prepend_header(&mut output);
+            }
             for sorted_child in sortable_children {
                 let _ = output.write_fmt(format_args!(
                     "pub mod {};\n",
@@ -241,7 +249,11 @@ impl Module {
                     .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
                 module_header.push('\n');
                 module_header.push_str(&file_content);
-                let clean = hide_doctests(&module_header);
+                let mut clean = hide_doctests(&module_header);
+                if gen_opts.prepend_header {
+                    prepend_header(&mut clean);
+                }
+
                 fs::write(&file_location, clean.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
@@ -252,11 +264,13 @@ impl Module {
                     })?;
                 }
                 // Don't try to copy into self, will get empty file
-            } else if !is_same_file {
+            } else {
                 let file_content = fs::read_to_string(file)
                     .map_err(|e| format!("Failed to read created file {file:?} \n{e}"))?;
-                let mut clean_content = hide_doctests(&file_content);
+                fs::remove_file(file)
+                    .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
 
+                let mut clean_content = hide_doctests(&file_content);
                 if gen_opts.prepend_header {
                     prepend_header(&mut clean_content);
                 }
@@ -264,8 +278,6 @@ impl Module {
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
                 })?;
-                fs::remove_file(file)
-                    .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
             }
         } else if let Some(module_header) = module_expose_output {
             let mod_file_location = self.location.join(format!("{}.rs", self.name));
