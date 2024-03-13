@@ -127,7 +127,12 @@ fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<Stri
         .into_values()
         .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
-    let mut top_level_mod = "#![allow(clippy::doc_markdown, clippy::use_self)]\n".to_string();
+    let mut top_level_mod = String::new();
+    if gen_opts.prepend_header {
+        prepend_header(&mut top_level_mod);
+    }
+    top_level_mod.push_str("#![allow(clippy::doc_markdown, clippy::use_self)]\n");
+
     if let Some(toplevel_attribute) = &gen_opts.toplevel_attribute {
         top_level_mod.push_str(toplevel_attribute);
         top_level_mod.push('\n');
