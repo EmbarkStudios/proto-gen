@@ -330,7 +330,7 @@ dependencies = [
 
 [[package]]
 name = "proto-gen"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "clap",
  "prost-build",
