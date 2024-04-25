@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.6] - 2024-04-25
 ### Added
 - [PR#23](https://github.com/EmbarkStudios/proto-gen/pull/23) Added `--enum-attribute` option to set enum attributes.
 
@@ -50,7 +51,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.5...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.6...HEAD
+[0.2.6]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.5...0.2.6
 [0.2.5]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.3...0.2.4
 [0.2.3]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.2...0.2.3
