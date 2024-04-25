@@ -61,6 +61,10 @@ struct TonicOpts {
     #[clap(long = "type-attribute", value_parser=KvValueParser)]
     type_attributes: Vec<(String, String)>,
 
+    /// Enum attributes to add.
+    #[clap(long = "enum-attribute", value_parser=KvValueParser)]
+    enum_attributes: Vec<(String, String)>,
+
     /// Client mod attributes to add.
     #[clap(long = "client-attribute", value_parser=KvValueParser)]
     client_attributes: Vec<(String, String)>,
@@ -123,6 +127,10 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
 
     for (k, v) in opts.tonic.type_attributes {
         bldr = bldr.type_attribute(k, v);
+    }
+
+    for (k, v) in opts.tonic.enum_attributes {
+        bldr = bldr.enum_attribute(k, v);
     }
 
     for (k, v) in opts.tonic.client_attributes {
@@ -232,6 +240,7 @@ message TestMessage {
             generate_transport: false,
             disable_comments: vec![],
             type_attributes: vec![],
+            enum_attributes: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
         };
@@ -379,6 +388,7 @@ message NestedTransitiveMsg {
             generate_transport: false,
             disable_comments: vec![],
             type_attributes: vec![],
+            enum_attributes: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
         };
