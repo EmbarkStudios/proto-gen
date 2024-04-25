@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#23](https://github.com/EmbarkStudios/proto-gen/pull/23) Added `--enum-attribute` option to set enum attributes.
+
 ## [0.2.5] - 2024-03-13
 ### Fixed
 - [PR#22](https://github.com/EmbarkStudios/proto-gen/pull/22) Various fixes for the `--prepend-header` option and some cases for escaped doc-tests.
