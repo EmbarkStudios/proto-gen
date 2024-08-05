@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Added
+- [PR#24](https://github.com/EmbarkStudios/proto-gen/pull/24) Added `--btree-map` option to output BTreeMaps instead of HashMaps.
+
 ## [0.2.6] - 2024-04-25
 ### Added
 - [PR#23](https://github.com/EmbarkStudios/proto-gen/pull/23) Added `--enum-attribute` option to set enum attributes.

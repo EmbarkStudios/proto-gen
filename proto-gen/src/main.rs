@@ -57,6 +57,10 @@ struct TonicOpts {
     #[clap(short, long)]
     disable_comments: Vec<String>,
 
+    /// Output maps as `BTreeMap` instead of `HashMap`. Passing '.' makes all maps `BTreeMap`.
+    #[clap(short, long = "btree-map")]
+    btree_maps: Vec<String>,
+
     /// Type attributes to add.
     #[clap(long = "type-attribute", value_parser=KvValueParser)]
     type_attributes: Vec<(String, String)>,
@@ -143,6 +147,8 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
 
     let mut config = prost_build::Config::new();
     config.disable_comments(opts.tonic.disable_comments);
+
+    config.btree_map(opts.tonic.btree_maps);
 
     let (ws, commit) = match opts.routine {
         Routine::Validate { workspace } => (workspace, false),
@@ -241,6 +247,7 @@ message TestMessage {
             disable_comments: vec![],
             type_attributes: vec![],
             enum_attributes: vec![],
+            btree_maps: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
         };
@@ -389,6 +396,7 @@ message NestedTransitiveMsg {
             disable_comments: vec![],
             type_attributes: vec![],
             enum_attributes: vec![],
+            btree_maps: vec![],
             client_attributes: vec![],
             server_attributes: vec![],
         };
