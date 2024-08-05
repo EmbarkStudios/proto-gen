@@ -49,7 +49,7 @@ struct TonicOpts {
     #[clap(short = 'c', long)]
     build_client: bool,
 
-    /// Whether to generate the ::connect and similar functions for tonic.
+    /// Whether to generate the `::connect` and similar functions for tonic.
     #[clap(long)]
     generate_transport: bool,
 
