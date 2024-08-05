@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.7] - 2024-08-05
 ### Added
 - [PR#24](https://github.com/EmbarkStudios/proto-gen/pull/24) Added `--btree-map` option to output BTreeMaps instead of HashMaps.
 
@@ -54,7 +55,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.6...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.7...HEAD
+[0.2.7]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.6...0.2.7
 [0.2.6]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.5...0.2.6
 [0.2.5]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.4...0.2.5
 [0.2.4]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.3...0.2.4
