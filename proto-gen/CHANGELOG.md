@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.8] - 2024-10-24
 ### Fixed
 - [PR#26](https://github.com/EmbarkStudios/proto-gen/pull/26) Include top module file when formatting
 ## [0.2.7] - 2024-08-05
@@ -57,7 +58,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.7...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.8...HEAD
+[0.2.8]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.7...0.2.8
 [0.2.7]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.6...0.2.7
 [0.2.6]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.5...0.2.6
 [0.2.5]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.4...0.2.5
