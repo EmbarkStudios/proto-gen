@@ -29,7 +29,7 @@ pub fn run_generation(
     let new = &proto_ws.tmp_dir;
     if gen_opts.format {
         recurse_fmt(new)?;
-        top_mod_content = fmt(top_mod_content)?;
+        top_mod_content = fmt(&top_mod_content)?;
     }
     let diff = run_diff(old, new, &top_mod_content)?;
     if diff > 0 {
@@ -545,7 +545,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
     Ok(())
 }
 
-fn fmt(code: String) -> Result<String, String> {
+fn fmt(code: &str) -> Result<String, String> {
     use std::io::Write;
     use std::process::Stdio;
 
