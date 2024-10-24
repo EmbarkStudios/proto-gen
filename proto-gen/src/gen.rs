@@ -22,13 +22,14 @@ pub fn run_generation(
     config: prost_build::Config,
     gen_opts: &GenOptions,
 ) -> Result<(), String> {
-    let top_mod_content = generate_to_tmp(proto_ws, opts, config, gen_opts).map_err(|e| {
+    let mut top_mod_content = generate_to_tmp(proto_ws, opts, config, gen_opts).map_err(|e| {
         format!("Failed to generate protos into temp dir for proto workspace {proto_ws:#?} \n{e}")
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
     if gen_opts.format {
         recurse_fmt(new)?;
+        top_mod_content = fmt(&top_mod_content)?;
     }
     let diff = run_diff(old, new, &top_mod_content)?;
     if diff > 0 {
@@ -518,7 +519,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
     for file in
         fs::read_dir(path).map_err(|e| format!("failed to read_dir for path {path:?} \n{e}"))?
     {
-        let entry = file.map_err(|e| format!("Failed to read entry in paht {path:?} \n{e}"))?;
+        let entry = file.map_err(|e| format!("Failed to read entry in path {path:?} \n{e}"))?;
         let metadata = entry
             .metadata()
             .map_err(|e| format!("Failed to read metadata for entry {entry:?} \n{e}"))?;
@@ -542,6 +543,34 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn fmt(code: &str) -> Result<String, String> {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = std::process::Command::new("rustfmt")
+        .arg("--edition")
+        .arg("2021")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to format, failed to launch rustfmt\n{e}"))?;
+
+    let child_stdin = child.stdin.as_mut().unwrap();
+    child_stdin
+        .write_all(code.as_bytes())
+        .map_err(|e| format!("Failed to format, failed to write data to rustfmt \n{e}"))?;
+    // drop(child_stdin);
+
+    let formatted_code = String::from_utf8(
+        child
+            .wait_with_output()
+            .map_err(|e| format!("Failed to format, rustfmt failed to run \n{e}"))?
+            .stdout,
+    )
+    .map_err(|e| format!("Failed to read formtted generated code \n{e}"))?;
+    Ok(formatted_code)
 }
 
 /// Rustdoc assumes all comments with 4 or more spaces or three backticks are things it absolutely

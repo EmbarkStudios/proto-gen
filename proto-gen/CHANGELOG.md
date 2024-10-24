@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#26](https://github.com/EmbarkStudios/proto-gen/pull/26) Include top module file when formatting
 ## [0.2.7] - 2024-08-05
 ### Added
-- [PR#24](https://github.com/EmbarkStudios/proto-gen/pull/24) Added `--btree-map` option to output BTreeMaps instead of HashMaps.
+- [PR#25](https://github.com/EmbarkStudios/proto-gen/pull/25) Added `--btree-map` option to output BTreeMaps instead of HashMaps.
 
 ## [0.2.6] - 2024-04-25
 ### Added
