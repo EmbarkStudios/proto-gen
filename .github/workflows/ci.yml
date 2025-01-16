@@ -102,6 +102,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          rust-version: "1.84.0"
 
   publish-check:
     name: Publish check
