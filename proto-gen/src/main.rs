@@ -21,6 +21,9 @@ use gen::ProtoWorkspace;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Opts {
+    #[command(subcommand)]
+    routine: Routine,
+
     #[clap(flatten)]
     tonic: TonicOpts,
 
@@ -31,8 +34,10 @@ struct Opts {
     /// Prepend header indicating tool version in generated source files
     #[clap(short, long, default_value_t = false)]
     prepend_header: bool,
-    #[command(subcommand)]
-    routine: Routine,
+
+    /// Prepend header file in generated source files
+    #[clap(long)]
+    prepend_header_file: Option<PathBuf>,
 
     /// Toplevel mod attribute to add.
     #[clap(long)]
@@ -157,7 +162,7 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
     let gen_opts = GenOptions {
         commit,
         format: opts.format,
-        prepend_header: opts.prepend_header,
+        prepend_header: prepend_header(opts.prepend_header, opts.prepend_header_file)?,
         toplevel_attribute: opts.toplevel_attribute,
     };
     if let Err(err) = run_ws(ws, bldr, config, &gen_opts) {
@@ -165,6 +170,31 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         return Err(1);
     }
     Ok(())
+}
+
+fn prepend_header(
+    prepend_header: bool,
+    prepend_header_file: Option<PathBuf>,
+) -> Result<Option<String>, i32> {
+    let mut maybe_header = None;
+
+    if prepend_header {
+        let version = env!("CARGO_PKG_VERSION");
+        maybe_header = Some(format!(
+            "// Generated with https://github.com/EmbarkStudios/proto-gen v.{version}\n\n"
+        ));
+    }
+
+    if let Some(prepend_header_file) = prepend_header_file {
+        let content = std::fs::read_to_string(&prepend_header_file).map_err(|e| {
+            eprintln!("Failed to read header file {prepend_header_file:?}: {e}");
+            1
+        })?;
+
+        maybe_header.get_or_insert("".into()).push_str(&content);
+    }
+
+    Ok(maybe_header)
 }
 
 fn run_ws(
@@ -274,6 +304,7 @@ message TestMessage {
                 workspace: test_cfg.workspace.clone(),
             },
             prepend_header: true,
+            prepend_header_file: None,
             toplevel_attribute: None,
         };
         // Generate
@@ -285,6 +316,7 @@ message TestMessage {
                 workspace: test_cfg.workspace.clone(),
             },
             prepend_header: true,
+            prepend_header_file: None,
             toplevel_attribute: None,
         };
         // Validate it's the same after generation
@@ -296,6 +328,7 @@ message TestMessage {
                 workspace: test_cfg.workspace,
             },
             prepend_header: true,
+            prepend_header_file: None,
             toplevel_attribute: None,
         };
         // Validate it's not the same if specifying no fmt
@@ -318,6 +351,7 @@ message TestMessage {
                 workspace: test_cfg.workspace,
             },
             prepend_header: true,
+            prepend_header_file: None,
             toplevel_attribute: None,
         };
         // Generate
@@ -411,6 +445,7 @@ message NestedTransitiveMsg {
             format: false,
             routine: Routine::Generate { workspace },
             prepend_header: true,
+            prepend_header_file: None,
             toplevel_attribute: None,
         };
         run_with_opts(opts).unwrap();

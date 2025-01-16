@@ -66,7 +66,7 @@ pub struct ProtoWorkspace {
 pub struct GenOptions {
     pub commit: bool,
     pub format: bool,
-    pub prepend_header: bool,
+    pub prepend_header: Option<String>,
     pub toplevel_attribute: Option<String>,
 }
 
@@ -129,9 +129,7 @@ fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<Stri
         .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
     let mut top_level_mod = String::new();
-    if gen_opts.prepend_header {
-        prepend_header(&mut top_level_mod);
-    }
+    prepend_header(&gen_opts.prepend_header, &mut top_level_mod);
     top_level_mod.push_str("#![allow(clippy::doc_markdown, clippy::use_self)]\n");
 
     if let Some(toplevel_attribute) = &gen_opts.toplevel_attribute {
@@ -226,9 +224,7 @@ impl Module {
                 a_borrow.get_name().cmp(b_borrow.get_name())
             });
             let mut output = String::new();
-            if gen_opts.prepend_header {
-                prepend_header(&mut output);
-            }
+            prepend_header(&gen_opts.prepend_header, &mut output);
             for sorted_child in sortable_children {
                 let _ = output.write_fmt(format_args!(
                     "pub mod {};\n",
@@ -251,9 +247,8 @@ impl Module {
                 module_header.push('\n');
                 module_header.push_str(&file_content);
                 let mut clean = hide_doctests(&module_header);
-                if gen_opts.prepend_header {
-                    prepend_header(&mut clean);
-                }
+
+                prepend_header(&gen_opts.prepend_header, &mut clean);
 
                 fs::write(&file_location, clean.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
@@ -272,9 +267,8 @@ impl Module {
                     .map_err(|e| format!("Failed to remove original file from {file:?} \n{e}"))?;
 
                 let mut clean_content = hide_doctests(&file_content);
-                if gen_opts.prepend_header {
-                    prepend_header(&mut clean_content);
-                }
+
+                prepend_header(&gen_opts.prepend_header, &mut clean_content);
 
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
@@ -306,12 +300,10 @@ impl Module {
     }
 }
 
-fn prepend_header(clean_content: &mut String) {
-    let version = env!("CARGO_PKG_VERSION");
-    clean_content.insert_str(
-        0,
-        &format!("// Generated with https://github.com/EmbarkStudios/proto-gen v.{version}\n\n"),
-    );
+fn prepend_header(maybe_prepend_header: &Option<String>, clean_content: &mut String) {
+    if let Some(prepend_header) = maybe_prepend_header {
+        clean_content.insert_str(0, &prepend_header);
+    }
 }
 
 fn as_file_name_string(path: impl AsRef<Path>) -> Result<String, String> {
