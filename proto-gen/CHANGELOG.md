@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.2.9] - 2025-01-16
 - [PR#27](https://github.com/EmbarkStudios/proto-gen/pull/27) Added `--prepend-header-file` option for specifying a file which will be prepended as a header in generated source files.
 ## [0.2.8] - 2024-10-24
 ### Fixed
@@ -59,7 +60,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.8...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.9...HEAD
+[0.2.9]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.8...0.2.9
 [0.2.8]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.7...0.2.8
 [0.2.7]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.6...0.2.7
 [0.2.6]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.5...0.2.6
