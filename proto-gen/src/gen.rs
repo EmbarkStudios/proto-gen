@@ -129,7 +129,7 @@ fn clean_up_file_structure(out_dir: &Path, gen_opts: &GenOptions) -> Result<Stri
         .collect::<Vec<Rc<RefCell<Module>>>>();
     // Linting, guh
     let mut top_level_mod = String::new();
-    prepend_header(&gen_opts.prepend_header, &mut top_level_mod);
+    prepend_header(gen_opts.prepend_header.as_ref(), &mut top_level_mod);
     top_level_mod.push_str("#![allow(clippy::doc_markdown, clippy::use_self)]\n");
 
     if let Some(toplevel_attribute) = &gen_opts.toplevel_attribute {
@@ -224,7 +224,7 @@ impl Module {
                 a_borrow.get_name().cmp(b_borrow.get_name())
             });
             let mut output = String::new();
-            prepend_header(&gen_opts.prepend_header, &mut output);
+            prepend_header(gen_opts.prepend_header.as_ref(), &mut output);
             for sorted_child in sortable_children {
                 let _ = output.write_fmt(format_args!(
                     "pub mod {};\n",
@@ -248,7 +248,7 @@ impl Module {
                 module_header.push_str(&file_content);
                 let mut clean = hide_doctests(&module_header);
 
-                prepend_header(&gen_opts.prepend_header, &mut clean);
+                prepend_header(gen_opts.prepend_header.as_ref(), &mut clean);
 
                 fs::write(&file_location, clean.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
@@ -268,7 +268,7 @@ impl Module {
 
                 let mut clean_content = hide_doctests(&file_content);
 
-                prepend_header(&gen_opts.prepend_header, &mut clean_content);
+                prepend_header(gen_opts.prepend_header.as_ref(), &mut clean_content);
 
                 fs::write(&file_location, clean_content.as_bytes()).map_err(|e| {
                     format!("Failed to write file contents to {file_location:?} \n{e}")
@@ -300,7 +300,7 @@ impl Module {
     }
 }
 
-fn prepend_header(maybe_prepend_header: &Option<String>, clean_content: &mut String) {
+fn prepend_header(maybe_prepend_header: Option<&String>, clean_content: &mut String) {
     if let Some(prepend_header) = maybe_prepend_header {
         clean_content.insert_str(0, prepend_header);
     }
@@ -613,7 +613,7 @@ fn hide_doctests(content: &str) -> String {
 #[must_use]
 pub fn has_ext(path: &Path, ext: &str) -> bool {
     path.extension()
-        .map_or(false, |p| p.eq_ignore_ascii_case(ext))
+        .is_some_and(|p| p.eq_ignore_ascii_case(ext))
 }
 
 #[cfg(test)]
