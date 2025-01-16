@@ -9,8 +9,7 @@ targets = [
 all-features = true
 
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
+version = 2
 yanked = "deny"
 ignore = [
 ]
@@ -116,11 +115,8 @@ github = []
 
 [licenses]
 private = { ignore = true, registries = ["embark"] }
-unlicensed = "deny"
-allow-osi-fsf-free = "neither"
 # We want really high confidence when inferring licenses from text
 confidence-threshold = 0.92
-copyleft = "deny"
 allow = [
     # We skip our private workspace crates when doing license
     # checks, so you will need to assign a proper license
