@@ -191,7 +191,9 @@ fn prepend_header(
             1
         })?;
 
-        maybe_header.get_or_insert("".into()).push_str(&content);
+        maybe_header
+            .get_or_insert_with(String::new)
+            .push_str(&content);
     }
 
     Ok(maybe_header)

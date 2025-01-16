@@ -302,7 +302,7 @@ impl Module {
 
 fn prepend_header(maybe_prepend_header: &Option<String>, clean_content: &mut String) {
     if let Some(prepend_header) = maybe_prepend_header {
-        clean_content.insert_str(0, &prepend_header);
+        clean_content.insert_str(0, prepend_header);
     }
 }
 
