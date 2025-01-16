@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+- [PR#27](https://github.com/EmbarkStudios/proto-gen/pull/27) Added `--prepend-header-file` option for specifying a file which will be prepended as a header in generated source files.
 ## [0.2.8] - 2024-10-24
 ### Fixed
 - [PR#26](https://github.com/EmbarkStudios/proto-gen/pull/26) Include top module file when formatting
