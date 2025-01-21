@@ -8,7 +8,7 @@
 
 # `💠 proto-gen`
 
-**Protobuf to `Rust` code generation using [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/)**
+**[Protobuf](https://protobuf.dev/) to [Rust](https://www.rust-lang.org/) code generation using [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/)**
 
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 [![Embark](https://img.shields.io/badge/discord-ark-%237289da.svg?logo=discord)](https://discord.gg/dAuKfZS)
@@ -70,30 +70,54 @@ and be a lurking security vulnerability in the worst case where someone have ins
 Ideally it'd be easier to disable running doc-test on a per-module basis. Placing generated protos in a separate lib 
 which doesn't run doc-comments is a safer choice, although doc-tests being opt-in would be significantly safer.  
 
-### Usage 
-Generate types from a `.proto` into an project.  
+## Usage 
+Generate types from a `.proto` into an project.
 
-#### Example in this project
-```bash
-cargo r -r -p proto-gen -- generate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+### Install
+To install `proto-gen` from source do the following. This assumed you have installed a recent [rust toolchain](https://www.rust-lang.org/tools/install).
 ```
+cargo install --locked proto-gen
+```
+
+### Examples in this project
 This will generate Rust code from the proto specified in `examples/example-project/proto/my-proto.proto` and place it 
-in `examples/example-project/src/proto_types`.  
+in `examples/example-project/src/proto_types`.
 
 ```bash
-cargo r -r -p proto-gen -- validate -d examples/example-project/proto -f examples/example-project/proto/my-proto.proto -o examples/example-project/src/proto_types
+proto-gen generate \
+  -d examples/example-project/proto \
+  -f examples/example-project/proto/my-proto.proto \
+  -o examples/example-project/src/proto_types
 ```
+
 This will also generate Rust code (to a temporary directory) and the run a diff against the code contained in `examples/example-project/src/proto_types`. 
 If it finds any diffs it will exit with error code 1 and a message.
 
-If we want to use includes, the directory to include needs to be specified.  
+```bash
+proto-gen validate \
+  -d examples/example-project/proto \
+  -f examples/example-project/proto/my-proto.proto \
+  -o examples/example-project/src/proto_types
+```
+
+If we want to use includes, the directory to include needs to be specified. Here we're passing `-d` twice, once to include the dependency protos, and one to include the protos we want to generate.  
 
 ```bash 
-cargo r -r -p proto-gen -- generate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
+proto-gen generate \
+  -d examples/example-project/dep_protos \
+  -d examples/example-project/proto_with_deps \
+  -f examples/example-project/proto_with_deps/my-proto.proto \
+  -o examples/example-project/src/proto_types
 ```
-Here we're passing `-d` twice, once to include the dependency protos, and one to include the protos we want to generate.  
+
+The same applies for validate.
+
 ```bash 
-cargo r -r -p proto-gen -- validate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
+proto-gen validate \
+  -d examples/example-project/dep_protos \
+  -d examples/example-project/proto_with_deps \
+  -f examples/example-project/proto_with_deps/my-proto.proto \
+  -o examples/example-project/src/proto_types
 ```
 
 ## Contributing
