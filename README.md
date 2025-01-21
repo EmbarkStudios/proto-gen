@@ -18,7 +18,7 @@
 </div>
 
 ## What
-The repo contains a a cli that uses [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/) to generate rust-code from protobuf-files.  
+The repo contains a cli tool that uses [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/) to generate rust-code from protobuf-files.  
 [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/) already does this, the cli is a front-end to 
 that with some added code to make sure that the generated files are placed in a valid path, and takes care of the 
 module structuring.
@@ -26,19 +26,19 @@ module structuring.
 ## Why
 [prost-build](https://docs.rs/prost-build/latest/prost_build/) used to ship with `cmake` which we would like to avoid.  
 `cmake` was used to build `protoc` which was then used for the proto-to-rust codegen.  
-The final decision from the prost maintainers side is that the user should provide their own protoc and check in the code
-instead of building it in a `build.rs`, to make that process simpler, this cli was created.  
+The final decision from the prost maintainers side is that the user should provide their own `protoc` and check in the code
+instead of building it in a `build.rs`, to make that process simpler, therefore this cli was created.  
 
 ## How
-Uses [a local version of protoc on path](https://grpc.io/docs/protoc-installation/) to generate rust code form a 
-workspace specification passed to the CLI. The CLI can also be used to validate generated Rust code against source 
-protocol files, for example, in CI.  
+Uses [a local version of protoc on path](https://grpc.io/docs/protoc-installation/) to generate rust code from a 
+workspace specification passed to the CLI. The CLI can also be used to validate the generated Rust code against source 
+protobuf files, for example, in CI.  
 
 ## Considerations
-There are quite a few problems with this tool, for now it remains the best alternative for our Protobuf pipeline, 
+There are quite a few problems with this tool, for now it remains the best alternative for our protobuf pipeline, 
 some things to take into account follows.  
 
-### Requires manual installations on the user's machine
+### Requires manual installation on the user's machine
 Running this tool requires at minimum `protoc` to be installed on the user's machine, 
 many protocol buffers found in the wild have dependencies in the form of other `.proto` files. Which also 
 have to be sourced.  
@@ -91,7 +91,7 @@ If we want to use includes, the directory to include needs to be specified.
 ```bash 
 cargo r -r -p proto-gen -- generate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
 ```
-Here we're passing -d twice, once to include the dependency protos, and one to include the protos we want to generate.  
+Here we're passing `-d` twice, once to include the dependency protos, and one to include the protos we want to generate.  
 ```bash 
 cargo r -r -p proto-gen -- validate -d examples/example-project/dep_protos -d examples/example-project/proto_with_deps -f examples/example-project/proto_with_deps/my-proto.proto -o examples/example-project/src/proto_types
 ```
