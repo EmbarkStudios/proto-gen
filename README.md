@@ -8,7 +8,7 @@
 
 # `💠 proto-gen`
 
-**Protobuf to `Rust` code generation using tonic-build**
+**Protobuf to `Rust` code generation using [tonic-build](https://crates.io/crates/tonic-build)**
 
 [![Embark](https://img.shields.io/badge/embark-open%20source-blueviolet.svg)](https://embark.dev)
 [![Embark](https://img.shields.io/badge/discord-ark-%237289da.svg?logo=discord)](https://discord.gg/dAuKfZS)
@@ -18,7 +18,7 @@
 </div>
 
 ## What
-The repo contains a a cli that uses tonic-build to generate rust-code from protobuf-files.  
+The repo contains a a cli that uses [tonic-build](https://crates.io/crates/tonic-build) to generate rust-code from protobuf-files.  
 [tonic-build](https://docs.rs/tonic-build/latest/tonic_build/) already does this, the cli is a front-end to 
 that with some added code to make sure that the generated files are placed in a valid path, and takes care of the 
 module structuring.
@@ -62,7 +62,7 @@ for this tool, although that may be a bit philosophical since the generated code
 ### Doc comments are executed
 Tonic converts protobuf comments to doc comments, if these include code examples, cargo will attempt to execute them
 when running `cargo test` (`doc-test` stage).  
-This behaviour is different form using `tonic-build`, since those doc-comments are generated where cargo doesn't try 
+This behaviour is different from using [`tonic-build`](https://crates.io/crates/tonic-build), since those doc-comments are generated where cargo doesn't try 
 to run them.  
 Running them is almost always guaranteed to fail in the best case (because they will be non-rust code or not code at all), 
 and be a lurking security vulnerability in the worst case where someone have inserted malicious Rust-code in a doc-comment.  
