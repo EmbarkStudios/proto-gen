@@ -71,13 +71,55 @@ Ideally it'd be easier to disable running doc-test on a per-module basis. Placin
 which doesn't run doc-comments is a safer choice, although doc-tests being opt-in would be significantly safer.  
 
 ## Usage 
-Generate types from a `.proto` into an project.
 
 ### Install
 To install `proto-gen` from source do the following. This assumed you have installed a recent [rust toolchain](https://www.rust-lang.org/tools/install).
 ```
 cargo install --locked proto-gen
 ```
+
+### Command-line options
+
+Usage:
+
+```
+proto-gen [OPTIONS] <COMMAND>
+```
+
+#### Commands:
+
+The top-level commands are:
+
+- `validate` Generate new Rust code for proto files, checking current files for differences. Returns error code 1 on any found differences.
+- `generate` Generate new Rust code for proto files, overwriting old files if present.
+- `help` Print this message or the help of the given subcommand(s).
+
+`validate` & `generate` share the following sub-options:
+
+-  `-d`, `--proto-dirs` `<PROTO_DIRS>` Directories containing proto files to source (Ex. Dependencies), needs to include any directory containing files to be included in generation.
+- `-f`, `--proto-files` `<PROTO_FILES>` The files to be included in generation.
+- `-t`, `--tmp-dir` `<TMP_DIR>` Temporary working directory, if left blank, `tempfile` is used to create a temporary directory.
+- `-o`, `--output-dir` `<OUTPUT_DIR>` Where to place output files. Will get cleaned up (all contents deleted). A module file will be placed in the parent of this directory.
+- `-h`, `--help` Print help.
+
+#### Options:
+The top-level options are:
+
+- `-s`, `--build-server` Whether to build server code.
+- `-c`, `--build-client` Whether to build client code.
+- `--generate-transport` Whether to generate the `::connect` and similar functions for tonic.
+- `-d`, `--disable-comments` `<DISABLE_COMMENTS>` Disable comments based on proto path. Passing `'.'` disables all comments.
+- `-b`, `--btree-map` `<BTREE_MAPS>` Output maps as `BTreeMap` instead of `HashMap`. Passing `'.'` makes all maps `BTreeMap`.
+- `--type-attribute` `<TYPE_ATTRIBUTES>` Type attributes to add.
+- `--enum-attribute` `<ENUM_ATTRIBUTES>` Enum attributes to add.
+- `--client-attribute` `<CLIENT_ATTRIBUTES>` Client mod attributes to add.
+- `--server-attribute` `<SERVER_ATTRIBUTES>` Server mod attributes to add.
+- `-f`, `--format` Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path.
+- `-p`, `--prepend-header` Prepend header indicating tool version in generated source files.
+- `--prepend-header-file` `<PREPEND_HEADER_FILE>` Prepend header file in generated source files.
+- `--toplevel-attribute` `<TOPLEVEL_ATTRIBUTE>` Toplevel mod attribute to add.
+- `-h`, `--help` Print help.
+- `-V`, `--version` Print version.
 
 ### Examples in this project
 This will generate Rust code from the proto specified in `examples/example-project/proto/my-proto.proto` and place it 
