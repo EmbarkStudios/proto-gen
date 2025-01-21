@@ -6,7 +6,7 @@
 
 <div align="center">
 
-# `󱌣 proto-gen`
+# `💠 proto-gen`
 
 **Protobuf to `Rust` code generation using tonic-build**
 
