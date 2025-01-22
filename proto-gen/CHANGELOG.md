@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Fixed
+- [PR#30](https://github.com/EmbarkStudios/proto-gen/pull/30) Improvements and fixes to the readme.
 ## [0.2.10] - 2025-01-16
 ### Fixed
 - Update dependency `anstream` to `0.6.15` for advisory: <https://rustsec.org/advisories/RUSTSEC-2024-0404>
