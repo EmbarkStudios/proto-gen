@@ -27,15 +27,15 @@ struct Opts {
     #[clap(flatten)]
     tonic: TonicOpts,
 
-    /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path
+    /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path.
     #[clap(short, long)]
     format: bool,
 
-    /// Prepend header indicating tool version in generated source files
+    /// Prepend header indicating tool version in generated source files.
     #[clap(short, long, default_value_t = false)]
     prepend_header: bool,
 
-    /// Prepend header file in generated source files
+    /// Prepend header file in generated source files.
     #[clap(long)]
     prepend_header_file: Option<PathBuf>,
 
@@ -46,11 +46,11 @@ struct Opts {
 
 #[derive(Args, Debug, Clone)]
 struct TonicOpts {
-    /// Whether to build server code
+    /// Whether to build server code.
     #[clap(short = 's', long)]
     build_server: bool,
 
-    /// Whether to build client code
+    /// Whether to build client code.
     #[clap(short = 'c', long)]
     build_client: bool,
 
@@ -92,7 +92,7 @@ enum Routine {
         workspace: WorkspaceOpts,
     },
 
-    /// Generate new Rust code for proto files, overwriting old files if present
+    /// Generate new Rust code for proto files, overwriting old files if present.
     Generate {
         #[clap(flatten)]
         workspace: WorkspaceOpts,
@@ -115,7 +115,7 @@ struct WorkspaceOpts {
     #[clap(short, long)]
     tmp_dir: Option<PathBuf>,
 
-    /// Where to place output files. Will get cleaned up (all contents deleted)
+    /// Where to place output files. Will get cleaned up (all contents deleted).
     /// A module file will be placed in the parent of this directory.
     #[clap(short, long)]
     output_dir: PathBuf,
