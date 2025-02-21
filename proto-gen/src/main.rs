@@ -27,9 +27,9 @@ struct Opts {
     #[clap(flatten)]
     tonic: TonicOpts,
 
-    /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path.
-    #[clap(short, long)]
-    format: bool,
+    /// Run rustfmt on the generated code with the specified edition
+    #[clap(short, long, value_name = "EDITION")]
+    format: Option<String>,
 
     /// Prepend header indicating tool version in generated source files.
     #[clap(short, long, default_value_t = false)]

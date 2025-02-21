@@ -27,9 +27,9 @@ pub fn run_generation(
     })?;
     let old = &proto_ws.output_dir;
     let new = &proto_ws.tmp_dir;
-    if gen_opts.format {
-        recurse_fmt(new)?;
-        top_mod_content = fmt(&top_mod_content)?;
+    if let Some(edition) = gen_opts.format.as_deref() {
+        recurse_fmt(new, edition)?;
+        top_mod_content = fmt(&top_mod_content, edition)?;
     }
     let diff = run_diff(old, new, &top_mod_content)?;
     if diff > 0 {
@@ -65,7 +65,7 @@ pub struct ProtoWorkspace {
 #[derive(Debug)]
 pub struct GenOptions {
     pub commit: bool,
-    pub format: bool,
+    pub format: Option<String>,
     pub prepend_header: Option<String>,
     pub toplevel_attribute: Option<String>,
 }
@@ -506,7 +506,7 @@ fn path_from_starts_with(root: &str, path: impl AsRef<Path> + Debug) -> Result<P
     Ok(pb)
 }
 
-fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
+fn recurse_fmt(base: impl AsRef<Path>, edition: &str) -> Result<(), String> {
     let path = base.as_ref();
     for file in
         fs::read_dir(path).map_err(|e| format!("failed to read_dir for path {path:?} \n{e}"))?
@@ -520,7 +520,7 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
             let out = std::process::Command::new("rustfmt")
                 .arg(&path)
                 .arg("--edition")
-                .arg("2021")
+                .arg(edition)
                 .output()
                 .map_err(|e| format!("Failed to format generated code \n{e}"))?;
             if !out.status.success() {
@@ -531,19 +531,19 @@ fn recurse_fmt(base: impl AsRef<Path>) -> Result<(), String> {
                 ));
             }
         } else if metadata.is_dir() {
-            recurse_fmt(path)?;
+            recurse_fmt(path, edition)?;
         }
     }
     Ok(())
 }
 
-fn fmt(code: &str) -> Result<String, String> {
+fn fmt(code: &str, edition: &str) -> Result<String, String> {
     use std::io::Write;
     use std::process::Stdio;
 
     let mut child = std::process::Command::new("rustfmt")
         .arg("--edition")
-        .arg("2021")
+        .arg(edition)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
