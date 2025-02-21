@@ -9,13 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#31](https://github.com/EmbarkStudios/proto-gen/pull/31) changed the `--format` flag to take a rust edition as an argument, as previously the 2021 edition was hardcoded.
+
 ## [0.2.11] - 2025-01-23
 ### Fixed
 - [PR#30](https://github.com/EmbarkStudios/proto-gen/pull/30) Improvements and fixes to the readme.
+
 ## [0.2.10] - 2025-01-16
 ### Fixed
 - Update dependency `anstream` to `0.6.15` for advisory: <https://rustsec.org/advisories/RUSTSEC-2024-0404>
 - Build fixes that prevented v `0.2.9` from being fully released
+
 ## [0.2.9] - 2025-01-16
 ### Added
 - [PR#27](https://github.com/EmbarkStudios/proto-gen/pull/27) Added `--prepend-header-file` option for specifying a file which will be prepended as a header in generated source files.

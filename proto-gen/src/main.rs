@@ -27,9 +27,9 @@ struct Opts {
     #[clap(flatten)]
     tonic: TonicOpts,
 
-    /// Use `rustfmt` on the code after generation, `rustfmt` needs to be on the path.
-    #[clap(short, long)]
-    format: bool,
+    /// Run rustfmt on the generated code with the specified edition
+    #[clap(short, long, value_name = "EDITION")]
+    format: Option<String>,
 
     /// Prepend header indicating tool version in generated source files.
     #[clap(short, long, default_value_t = false)]
@@ -301,7 +301,7 @@ message TestMessage {
         let test_cfg = create_simple_test_cfg(None);
         let opts = Opts {
             tonic: test_cfg.tonic.clone(),
-            format: true,
+            format: Some("2021".into()),
             routine: Routine::Generate {
                 workspace: test_cfg.workspace.clone(),
             },
@@ -313,7 +313,7 @@ message TestMessage {
         run_with_opts(opts).unwrap();
         let opts = Opts {
             tonic: test_cfg.tonic.clone(),
-            format: true,
+            format: Some("2021".into()),
             routine: Routine::Validate {
                 workspace: test_cfg.workspace.clone(),
             },
@@ -325,7 +325,7 @@ message TestMessage {
         run_with_opts(opts).unwrap();
         let opts = Opts {
             tonic: test_cfg.tonic.clone(),
-            format: false,
+            format: None,
             routine: Routine::Validate {
                 workspace: test_cfg.workspace,
             },
@@ -348,7 +348,7 @@ message TestMessage {
         let test_cfg = create_simple_test_cfg(Some(my_output_tmp.path().to_path_buf()));
         let opts = Opts {
             tonic: test_cfg.tonic.clone(),
-            format: false,
+            format: None,
             routine: Routine::Generate {
                 workspace: test_cfg.workspace,
             },
@@ -444,7 +444,7 @@ message NestedTransitiveMsg {
         };
         let opts = Opts {
             tonic,
-            format: false,
+            format: None,
             routine: Routine::Generate { workspace },
             prepend_header: true,
             prepend_header_file: None,
