@@ -1,5 +1,6 @@
 //! A Runner that extends proto-gen with a cli for code generation without direct build dependencies
 #![warn(clippy::pedantic)]
+#![allow(clippy::unnecessary_debug_formatting)]
 
 mod gen;
 mod kv;

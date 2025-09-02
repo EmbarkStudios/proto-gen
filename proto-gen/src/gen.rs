@@ -1,6 +1,10 @@
 //! A library that generates Rust code using tonic-build and places that code in a supplied directory
 #![warn(clippy::pedantic)]
-#![allow(clippy::disallowed_types, clippy::disallowed_methods)]
+#![allow(
+    clippy::disallowed_types,
+    clippy::disallowed_methods,
+    clippy::unnecessary_debug_formatting
+)]
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -375,7 +379,7 @@ fn run_diff(
                 "Failed to read old mod file at {old_top_mod_path:?} \n{e}"
             ));
         }
-    };
+    }
 
     for _ in orig_files {
         diff += 1;
