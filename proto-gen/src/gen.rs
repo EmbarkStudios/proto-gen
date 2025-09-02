@@ -10,7 +10,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use tonic_build::Builder;
+use tonic_prost_build::Builder;
 
 /// Generate protos for the provided proto workspace
 /// # Errors
@@ -19,7 +19,7 @@ use tonic_build::Builder;
 pub fn run_generation(
     proto_ws: &ProtoWorkspace,
     opts: Builder,
-    config: prost_build::Config,
+    config: tonic_prost_build::Config,
     gen_opts: &GenOptions,
 ) -> Result<(), String> {
     let mut top_mod_content = generate_to_tmp(proto_ws, opts, config, gen_opts).map_err(|e| {
@@ -73,7 +73,7 @@ pub struct GenOptions {
 fn generate_to_tmp(
     ws: &ProtoWorkspace,
     opts: Builder,
-    config: prost_build::Config,
+    config: tonic_prost_build::Config,
     gen_opts: &GenOptions,
 ) -> Result<String, String> {
     let old_out = std::env::var("OUT_DIR");
