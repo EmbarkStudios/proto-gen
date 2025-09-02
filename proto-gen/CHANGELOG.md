@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+## [0.4.0] - 2025-09-02
 ### Changed
 - [PR#33](https://github.com/EmbarkStudios/proto-gen/pull/33) updated to `tonic-prost-build`, which replaced tonic-build in 0.14.
 
@@ -74,7 +75,8 @@ and will lead to failed cargo test, and if it is rust code, we definitely don't 
 - Initial creation of the proto-gen lib and proto-gen-cli
 
 <!-- next-url -->
-[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/EmbarkStudios/proto-gen/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/EmbarkStudios/proto-gen/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.11...0.3.0
 [0.2.11]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.10...0.2.11
 [0.2.10]: https://github.com/EmbarkStudios/proto-gen/compare/0.2.9...0.2.10
