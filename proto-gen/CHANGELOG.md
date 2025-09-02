@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+### Changed
+- [PR#33](https://github.com/EmbarkStudios/proto-gen/pull/33) updated to `tonic-prost-build`, which replaced tonic-build in 0.14.
+
 ## [0.3.0] - 2025-02-21
 ### Changed
 - [PR#31](https://github.com/EmbarkStudios/proto-gen/pull/31) changed the `--format` flag to take a rust edition as an argument, as previously the 2021 edition was hardcoded.
