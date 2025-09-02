@@ -1,5 +1,6 @@
 //! A Runner that extends proto-gen with a cli for code generation without direct build dependencies
 #![warn(clippy::pedantic)]
+#![allow(clippy::unnecessary_debug_formatting)]
 
 mod gen;
 mod kv;
@@ -13,7 +14,7 @@ use std::path::PathBuf;
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
-use tonic_build::Builder;
+use tonic_prost_build::Builder;
 
 use gen::ProtoWorkspace;
 
@@ -127,7 +128,7 @@ fn main() -> Result<(), i32> {
 }
 
 fn run_with_opts(opts: Opts) -> Result<(), i32> {
-    let mut bldr = tonic_build::configure()
+    let mut bldr = tonic_prost_build::configure()
         .build_client(opts.tonic.build_client)
         .build_server(opts.tonic.build_server)
         .build_transport(opts.tonic.generate_transport)
@@ -150,7 +151,7 @@ fn run_with_opts(opts: Opts) -> Result<(), i32> {
         bldr = bldr.server_mod_attribute(k, v);
     }
 
-    let mut config = prost_build::Config::new();
+    let mut config = tonic_prost_build::Config::new();
     config.disable_comments(opts.tonic.disable_comments);
 
     config.btree_map(opts.tonic.btree_maps);
@@ -202,7 +203,7 @@ fn prepend_header(
 fn run_ws(
     opts: WorkspaceOpts,
     bldr: Builder,
-    config: prost_build::Config,
+    config: tonic_prost_build::Config,
     gen_opts: &GenOptions,
 ) -> Result<(), String> {
     if opts.proto_files.is_empty() {

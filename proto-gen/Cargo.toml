@@ -16,11 +16,7 @@ workspace = ".."
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 tempfile = { workspace = true }
-tonic-build = { workspace = true, default-features = false, features = [
-    "transport",
-    "prost",
-] }
-prost-build.workspace = true
+tonic-prost-build.workspace = true
 
 [features]
 default = []
